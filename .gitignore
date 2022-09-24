@@ -4,7 +4,7 @@ Programas/Keilu5.EXE
 *.map
 *.axf
 *.htm
-*.build_log.htm
+*.build_log*
 *.lnp
 *.dep
 *.d
