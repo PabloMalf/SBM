@@ -44,12 +44,12 @@ int main(void)
 
 	LED_init();
 	
-	//Apartado A Period 499
+	//Apartado A Period 1000
 	//Apartado B Period 2999
 	
 	tim7.Instance = TIM7;
 	tim7.Init.Prescaler = 41999; // APB1_Timer / Prescaler  
-	tim7.Init.Period = 499; // APB1_Timer * Period
+	tim7.Init.Period = 2999; // APB1_Timer * Period
 	
 	HAL_NVIC_SetPriority(TIM7_IRQn, 0, 0);
 	HAL_NVIC_EnableIRQ(TIM7_IRQn);
