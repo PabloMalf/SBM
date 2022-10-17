@@ -30,32 +30,22 @@ uint32_t HAL_GetTick (void) {
 
 static void SystemClock_Config(void);
 static void Error_Handler(void);
-static void LED_init(void);
+static void pin_config(void);
+static void init_Timer(void);
 
-TIM_HandleTypeDef tim7;
+TIM_HandleTypeDef tim2;
+TIM_HandleTypeDef tim3;
+
 
 int main(void){
   HAL_Init();
   SystemClock_Config();
   SystemCoreClockUpdate();
-	
-  /* App */
 
-	LED_init();
-	
-	//Apartado A Period 1000
-	//Apartado B Period 2999
-	
-	tim7.Instance = TIM7;
-	tim7.Init.Prescaler = 41999; // APB1_Timer / Prescaler  
-	tim7.Init.Period = 2999; // APB1_Timer * Period
-	
-	HAL_NVIC_SetPriority(TIM7_IRQn, 0, 0);
-	HAL_NVIC_EnableIRQ(TIM7_IRQn);
-	__HAL_RCC_TIM7_CLK_ENABLE();
-	
-	HAL_TIM_Base_Init(&tim7);
-	HAL_TIM_Base_Start_IT(&tim7);
+  /* App */
+	HAL_NVIC_EnableIRQ(TIM3_IRQn);
+	pin_config();
+	init_Timer();
 	
 	/* App */ 
 	
@@ -72,12 +62,11 @@ int main(void){
 #endif
 
   while(1){
-
+		
 	}
 }
 
-
-static void SystemClock_Config(void){ //SYSCLOCK 168MHz
+static void SystemClock_Config(void){
   RCC_ClkInitTypeDef RCC_ClkInitStruct;
   RCC_OscInitTypeDef RCC_OscInitStruct;
 
@@ -119,14 +108,55 @@ void assert_failed(uint8_t* file, uint32_t line){
 }
 #endif
 
-static void LED_init(void){
+static void pin_config(void){
 	static GPIO_InitTypeDef GPIO_InitStruct;
-	
+	//PB11 AF1
 	__HAL_RCC_GPIOB_CLK_ENABLE();
-	GPIO_InitStruct.Mode = GPIO_MODE_OUTPUT_PP;
+	GPIO_InitStruct.Pin = GPIO_PIN_11;
+	GPIO_InitStruct.Mode = GPIO_MODE_AF_PP;
 	GPIO_InitStruct.Pull = GPIO_PULLUP;
-	GPIO_InitStruct.Speed = GPIO_SPEED_FREQ_VERY_HIGH;
-	
-	GPIO_InitStruct.Pin = GPIO_PIN_0 | GPIO_PIN_7 | GPIO_PIN_14;
+	GPIO_InitStruct.Speed = GPIO_SPEED_FAST;
+	GPIO_InitStruct.Alternate = GPIO_AF1_TIM2;
 	HAL_GPIO_Init(GPIOB, &GPIO_InitStruct);
+	
+	//PB0 AF2
+	GPIO_InitStruct.Pin = GPIO_PIN_0;
+	GPIO_InitStruct.Mode = GPIO_MODE_AF_PP;
+	GPIO_InitStruct.Alternate = GPIO_AF2_TIM3;
+	HAL_GPIO_Init(GPIOB, &GPIO_InitStruct);
+}
+
+static void init_Timer(void){
+	static TIM_OC_InitTypeDef TIM_Channel_InitStruct;
+	static TIM_IC_InitTypeDef TIM_Channel_InitStruct_;
+	
+	//TIM2 CH4 OC-Mode
+	__HAL_RCC_TIM2_CLK_ENABLE();
+	tim2.Instance = TIM2;
+	tim2.Init.Prescaler = 20999;
+	tim2.Init.Period = 1;
+	HAL_TIM_OC_Init(&tim2);
+	
+	TIM_Channel_InitStruct.OCMode = TIM_OCMODE_TOGGLE;
+	TIM_Channel_InitStruct.OCPolarity = TIM_OCPOLARITY_HIGH;
+	TIM_Channel_InitStruct.OCFastMode = TIM_OCFAST_DISABLE;
+	HAL_TIM_OC_ConfigChannel(&tim2, &TIM_Channel_InitStruct, TIM_CHANNEL_4);
+	HAL_TIM_OC_Start(&tim2, TIM_CHANNEL_4);
+	
+	
+	//TIM3 CH3 IC-Mode	
+	__HAL_RCC_TIM3_CLK_ENABLE();
+	tim3.Instance = TIM3;
+	tim3.Init.Prescaler = 0;
+	tim3.Init.Period = 65535;
+	HAL_TIM_Base_Init(&tim3);
+	HAL_TIM_Base_Start_IT(&tim3);
+	
+	TIM_Channel_InitStruct_.ICPolarity = TIM_ICPOLARITY_RISING;
+	TIM_Channel_InitStruct_.ICSelection = TIM_ICSELECTION_DIRECTTI;
+	TIM_Channel_InitStruct_.ICPrescaler = TIM_ICPSC_DIV1;
+	TIM_Channel_InitStruct_.ICFilter = 0;
+	HAL_TIM_IC_ConfigChannel(&tim3, &TIM_Channel_InitStruct_, TIM_CHANNEL_3);
+	HAL_TIM_IC_Start_IT(&tim3, TIM_CHANNEL_3);
+	
 }

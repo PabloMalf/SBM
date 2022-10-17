@@ -124,7 +124,7 @@ void init_Timer(void){
 	
 	__HAL_RCC_TIM2_CLK_ENABLE();
 	tim2.Instance = TIM2;
-	tim2.Init.Prescaler = 41999;
+	tim2.Init.Prescaler = 20999;
 	tim2.Init.Period = 1;
 	HAL_TIM_OC_Init(&tim2);
 	
