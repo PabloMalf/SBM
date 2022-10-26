@@ -1,0 +1,41 @@
+¿Qué es un timer? Nos permite gestionar el tiempo. Vamos a:
+	- Gestionar eventos.
+	- Medir señales expernar, periodo, frecuencia.
+	- Generar salidas digitales.
+ALgo muy importante es que tenemos que saber es que si programo un timer para que me genere una señal cuadrada, al microcontrolador solo tengo que programarla, pero la señal se genera en en el hardware dedicado para ello, sin molestar al micro.
+El temposizador mas basico que podemos hacer es un contador, que se compone de: Un registo de un numero de bits y una entrada de reloj. Ademas voy a necesitar otro registro en paralelo con el contador para ir comparando y que el overflow (el pulso de salida) se produzca donde quiera. 
+Tendremos que configurar 2 datos para elegir el tiempo: 
+	- Prescaler: que me divide la frecuencia
+	- Autoreload registrer: Es el comparador del que hemos hablado
+
+Si multiplicamos el prescaler por el autoreload registrer, vamos a obtener cuando conseguimos el overfload.
+
+En nuestra placa tenemos 2 timers de 32 bits y 8 de 16 bits.
+
+Ademas, el SysticTimer es el que se encarga de genererar interrupciones genericas (Como Delay)
+
+El diagrama de los timers los encontramos en la pagina 20 del STM32f429-DATASHEET.pdf, estan conectados al APB1 o al APB2, que nos sirve para, a traves del diagrama del reloj saber que valores de frecuencia poner (Tendremos que elegir las opciones que tiene el nombre de APBX Timers Clocks.
+
+Tenemos: (Los encontramos en la pagina 15 de la doc de timers del bloque 1
+2 timers básicos: solo generar interrupciones.
+Proposito general: Tiene toda la funcionalidad.
+Timers Avanzados: no nos va a dar tiempo.
+
+Timers 6 y 7: (Son de tipo básico) Cuentan en sentido UP, tiene un prescaler de 16 bits, quiere decir que la F de entrada, la podemos dividir entre 0 a 65536 (Simpre en este instervalo), nos puede generar interrupciones cuando lleguemos al overflow.
+
+Sentido UP DOWN, un prescaler de 16 bits igual que el anterior.
+
+Todos los timers los emplearemos para la capa HAL, asi que toda la documentación la tenemos ahi.
+
+
+Tenemos 3 formas de usar un timer:
+	- Polling:Para comprobar el estado de la cuenta
+	- Interrupt: cuando suceda un cierto envento (Ej: han pasado x segundos y sucede algo).
+	- DMA: No lo vemos
+
+Las estructuras que tenemos sobre los timers:
+	- TIM_HandlerTypeDef: del archivo stm32f4xx_hal_tim.h
+Tendremos que rellenar:
+	- TIM_TypeDef: El valor del timer que queremos utilizar
+	- TIM_Base_InitTypeDef: -tenemos que configurar el Prescaler y el Period que es el valor de autorecarga.
+

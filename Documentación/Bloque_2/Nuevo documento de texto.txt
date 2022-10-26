@@ -1,0 +1,47 @@
+Vamos a manejar ciertos perifericos con un software llamdo CMSIS, que nos proporciona Keil ARM y es compatible con todos los dispositivos que nos tengan un microcontrolador ARM CORE, como pueden ser contorladores de etherneto o wifi o comunicaciones que posrian usarse para otros dispositivos.
+Todo lo que vamos a hacer lo podremos hacer con la capa HAL.
+1. Que es CMSIS:
+	Vamos a contriuir apricaciones a traves de un driver. Vamos a tener un API (Application Program Interface) que nos va a permitir gobernar ese periferico. Usaremos un la pagina de keil (https://www.keil.com/pack/doc/CMSIS/Driver/html/index.html) donde manejaremos las funciones de CMSIS driver. Usaremos la version 2.8.0 
+	Dentro de todo el ecositema para desarrollar, nos encontramos en una capa mas elevada de HAL, donde vamos a tener acceso a todos los perifericos. Mas adelante de CMSIS veremos el CMSIS RTOS.
+	Existen tambien los middleware que nos permite el manejo de sistemas aun mas complejo
+	Hay un fichero que tendremos que usear con mucho cuidado y tendremos que revisar constantemente: RTE_device.h (Run TIme Enviroment). En el configuraremos los perifericos qeu queramos utilizar.
+	-> Que secuencia de operaciones tendremos que hacer con CMSIS: 
+	1. Initialize: Funcion de inicializacion del dispositivo: que nos permintirá configurar que el dispositivo se asocie a uno 	   de los pines que estamoa usando como AF. 
+	2. PowerControl: Da energia al periferico y se configura el modo de trabajao, reloj, bits...
+	3. DataTransfer: tendremos que empezar a mandar datos o recibirlos, por ejemplo leer datos de una SSD. Las frecuencias de 	   datos serán a una frecuencia menor a la que finciona el micro ya que necesitamos que siga hacienco otras cosas (Signal 		   Event).
+	4. Quitarle la energia y desinicializarlo.
+	-> Por tanto la secuencia será:
+	Initialize
+	PowerControl (ON)
+	Control (Parámetros) (Consultaremos la pagina para ver las APIs / Usage and Description > Reference)
+	Send
+	Receive (opcional)
+	PowerControl (OFF)
+	Uninitialize
+
+	Con respecto a la transferencia de datos, vamos a hcaer que el driver me señalice que la transferencia a acabado, para ello, vamos a tener una función predefinica de CallBack, este CallBack se define cuando se inicializa del Driver.
+	
+2. Bus SPI:
+
+	Es un bus sincrono, es decir necesitaremos un reloj que tendremos que configurar. Utilizaremos una configuración master/slave. Se envia unn bit con cada pulso del reloj, adems se pueden realizar tranferenciad e 8 a 16 bits. msb a lsb será lo mas habitual.
+	Necesitaremos 4 lineas: SCLK, MISO (Master Input Slave Output), MOSI, NSS. La infromación del SPI la sacaremos del USER MANUAL del micro.
+	el bit CPOL nos indica la polaridad del reloj, si es a nivel alto a nivel bajo lo tendremos que configurar en funcion del dispositivo que queramos utilizar. Tenemos que tener en cuenta a que APB esta conectada (Pag 20 Datasheet)
+
+3. LCD: 
+
+	Este es el dispositivo que usaremos con la interfaz SPI. Tamaño 128x32. Enviaremos información en serie para configurar y representar información en el. Tiene un controlador con un manual de referencia.
+	Desde la interfaz SPI solo utilizaremos la señal de reloj y de MOSI. Las lineas Reset, A0, CS (seleccion), las manejaremos con GPIO, son lineas que llevarán 0 o 1 (set y reset).
+https://www.keil.com/pack/doc/CMSIS/Driver/html/group__spi__interface__gr.html#gad18d229992598d6677bec250015e5d1a
+
+
+
+
+
+
+
+
+
+
+
+
+

@@ -1,0 +1,27 @@
+(Placa)		UM1974-NUCLEO-F429ZI-USER MANUAL: Describe la placa entera con la que vamos a trabajar.
+(Núcleo)	STM32f429-DATASHEET: Todo lo que tiene que ver con como está construido el MICRO.
+(Núcleo)	STM32F429-REFERENCE-MANUAL: Se describen todos los perifericos y como se utilizan.
+(Programa) 	UM1725-STM32F4-HAL-AND-LL-DRIVERS-DESCRIPTION: Descripción de la capa HAL, para consultar funciones.
+(CMSIS)		https://www.keil.com/pack/doc/CMSIS/General/html/index.html
+
+
+
+UM1974-NUCLEO-F429ZI-USER MANUAL
+	25.- OSC clock (frecuencia del oscilador).
+	33.- Conectores de la placa con los puertos.
+	38.- Ampiación de los conectores.
+	75.- Esquema electrico de la nucleo (Para ver niveles altos y bajos de las conexiones).
+
+STM32f429-DATASHEET
+	20.- APB.
+	75.- Tabla de relaciones Pin/Funciones.
+	75.- Informacion de los puertos para Timers.
+
+STM32F429-REFERENCE-MANUAL
+	590.- Esquema general
+	916.- Registro del SPI
+
+UM1725-STM32F4-HAL-AND-LL-DRIVERS-DESCRIPTION
+	1007.- Funciones para gestionar los timers.
+	
+stm32F429xx.h - Encontramos las definiciones de todas las interrupciones.

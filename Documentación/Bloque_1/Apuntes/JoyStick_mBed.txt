@@ -1,0 +1,7 @@
+Pines de la emBed para el joystick:
+
+sw_down		Pin_12
+sw_left		Pin_13
+sw_center	Pin_14
+sw_up		Pin_15
+sw_right	Pin_16

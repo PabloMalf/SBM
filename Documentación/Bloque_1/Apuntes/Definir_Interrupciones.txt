@@ -1,0 +1,18 @@
+Para definir las interrupciones tenemos que tener en cuenta estos pasos:
+1º en el main.c:
+	HAL_NVIC_SetPriority(EXTI15_10_IRQn, 0, 0); -> esta linea me establece la prioridad de la interrupción
+	HAL_NVIC_EnableIRQ(EXTI15_10_IRQn); -> esta linea me habilita la interrupción, el valor que pasamos como parametro depende del puerto de el periferico.
+
+2º en el fichero de interrrupciones:
+
+	void EXTI15_10_IRQHandler(void){
+		HAL_GPIO_EXTI_IRQHandler(GPIO_PIN_13);
+	}
+
+aquí creamos el metodo que maneja la interrupción, le pasamos como parametro el Pin donde se encuentra el periferico.
+
+	void HAL_GPIO_EXTI_Callback(uint16_t GPIO_Pin){
+		delay = ((delay == 250) ? 1000 : (delay/2));
+	}
+
+Este metodo define el comportamiento de la interrupción, con un switch podemos modificar si tenemos diferentes pines de entrada.
