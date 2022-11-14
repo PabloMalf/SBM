@@ -1,5 +1,5 @@
 #include "main.h"
-#include "lcd.h"
+#include "Thread.h"
 
 #ifdef _RTE_
 #include "RTE_Components.h"             // Component selection
@@ -32,41 +32,26 @@ uint32_t HAL_GetTick (void) {
 	
 static void SystemClock_Config(void);
 static void Error_Handler(void);
-int i = 0;
-static char data_L1[32];
-static char data_L2[32];
 
 int main(void)
 {
   HAL_Init();
   SystemClock_Config();
   SystemCoreClockUpdate();
-
-  /* App */
-
-	LCD_init();
-
-	sprintf(data_L1,"Prueba valor1: 1234");
-	sprintf(data_L2,"Prueba valor2: 3,14159");
-	update_data(data_L1, data_L2);
-	
-	/* App */ 
 	
 #ifdef RTE_CMSIS_RTOS2
   osKernelInitialize ();
 
   /* Init Threads */
 	
-	
+	Init_Th_Thled1();
 	
 	/* Init Threads */
 
   osKernelStart();
 #endif
 
-  while(1){
-
-	}
+  while(1){}
 }
 
 

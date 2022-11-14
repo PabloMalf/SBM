@@ -3,7 +3,7 @@
  * Auto generated Run-Time-Environment Configuration File
  *      *** Do not modify ! ***
  *
- * Project: 'P4_E5' 
+ * Project: 'P5_E3' 
  * Target:  'Target 1' 
  */
 
@@ -16,6 +16,9 @@
  */
 #define CMSIS_device_header "stm32f4xx.h"
 
+/* ARM::CMSIS:RTOS2:Keil RTX5:Library:5.5.3 */
+#define RTE_CMSIS_RTOS2                 /* CMSIS-RTOS2 */
+        #define RTE_CMSIS_RTOS2_RTX5            /* CMSIS-RTOS2 Keil RTX5 */
 /* Keil::CMSIS Driver:SPI:2.15 */
 #define RTE_Drivers_SPI1                /* Driver SPI1 */
         #define RTE_Drivers_SPI2                /* Driver SPI2 */

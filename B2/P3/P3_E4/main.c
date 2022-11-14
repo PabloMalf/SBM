@@ -31,11 +31,13 @@ uint32_t HAL_GetTick (void) {
 #endif
 
 unsigned char buffer[512];
+static int i = 0;
 
 extern ARM_DRIVER_SPI Driver_SPI1;
 ARM_DRIVER_SPI* SPIdrv = &Driver_SPI1;
+
 TIM_HandleTypeDef tim7;
-	int i = 0;
+
 static void SystemClock_Config(void);
 static void Error_Handler(void);
 
@@ -45,9 +47,8 @@ static void LCD_wr_cmd(unsigned char cmd);
 static void LCD_init(void);
 static void LCD_update(void);
 static void delay(uint32_t n_microsegundos);
-int i;
-int main(void)
-{
+
+int main(void){
   HAL_Init();
   SystemClock_Config();
   SystemCoreClockUpdate();
@@ -57,28 +58,9 @@ int main(void)
 	LCD_reset();
 	LCD_init();
 	
-	for(i = 0; i < 256; i++){
+	for(i = 0; i < 512; i++){
 		buffer[i] = 0xFF;
 	}
-	
-	
-//	buffer[0] = 0xff;
-//	buffer[128] = 0xff;
-//	buffer[256] = 0xff;
-	
-//for(i = 0; i < 64; i++){
-//		buffer[i] = 0xaa;
-//	}
-//	for(i = 128; i < 192; i++){
-//		buffer[i] = 0xaa;
-//	}
-//	for(i = 256; i < 320; i++){
-//		buffer[i] = 0xaa;
-//	}
-//	for(i = 384; i < 448; i++){
-//		buffer[i] = 0xaa;
-//	}
-//	
 	
 	LCD_update();
 	
@@ -193,8 +175,8 @@ static void LCD_reset(void){
 	
 	/*SPI*/
 	SPIdrv->Initialize(NULL);
-  SPIdrv-> PowerControl(ARM_POWER_FULL);
-  SPIdrv-> Control(ARM_SPI_MODE_MASTER | ARM_SPI_CPOL1_CPHA1 | ARM_SPI_MSB_LSB | ARM_SPI_DATA_BITS (8), 20000000);
+	SPIdrv-> PowerControl(ARM_POWER_FULL);
+	SPIdrv-> Control(ARM_SPI_MODE_MASTER | ARM_SPI_CPOL1_CPHA1 | ARM_SPI_MSB_LSB | ARM_SPI_DATA_BITS (8), 20000000);
 	HAL_GPIO_WritePin(GPIOA, GPIO_PIN_6, GPIO_PIN_RESET);
 	delay(1);
 	HAL_GPIO_WritePin(GPIOA, GPIO_PIN_6, GPIO_PIN_SET);
@@ -225,12 +207,12 @@ static void LCD_wr_cmd(unsigned char cmd){
 
 static void LCD_init(void){
 	LCD_wr_cmd(0xAE);//display off
-	LCD_wr_cmd(0xA2);//Fija el valor de la tensión de polarización del LCD a 1/9
+	LCD_wr_cmd(0xA2);//Fija el valor de la tensiï¿½n de polarizaciï¿½n del LCD a 1/9
 	LCD_wr_cmd(0xA0);//El direccionamiento de la RAM de datos del display es la normal
 	LCD_wr_cmd(0xC8);//El scan en las salidas COM es el normal
-	LCD_wr_cmd(0x22);//Fija la relación de resistencias interna a 2
+	LCD_wr_cmd(0x22);//Fija la relaciï¿½n de resistencias interna a 2
 	LCD_wr_cmd(0x2F);//Power on
-	LCD_wr_cmd(0x40);//Display empieza en la línea 0
+	LCD_wr_cmd(0x40);//Display empieza en la lï¿½nea 0
 	LCD_wr_cmd(0xAF);//Display ON
 	LCD_wr_cmd(0x81);//Contraste
 	LCD_wr_cmd(0x17);//Valor de contraste
@@ -239,7 +221,7 @@ static void LCD_init(void){
 }
 
 static void LCD_update(void){
-	int i;	
+	static int i;	
 	LCD_wr_cmd(0x00);
 	LCD_wr_cmd(0x10);
 	LCD_wr_cmd(0xB0);
