@@ -1,7 +1,7 @@
 #ifndef __THLED2_H
 #define __THLED2_H
 
-#include "cmsis_os2.h"
+
 
 #define FLAG_START_LED2 0x01
 

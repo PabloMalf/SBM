@@ -1,6 +1,7 @@
 #include "stm32f4xx_hal.h"
 #include "Thled2.h"
 #include "Thled3.h"
+#include "cmsis_os2.h"
 
 osThreadId_t tid_led2;
 
