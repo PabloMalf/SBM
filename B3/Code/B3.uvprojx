@@ -398,6 +398,21 @@
               <FileType>1</FileType>
               <FilePath>.\lcd.c</FilePath>
             </File>
+            <File>
+              <FileName>clock.c</FileName>
+              <FileType>1</FileType>
+              <FilePath>.\clock.c</FilePath>
+            </File>
+            <File>
+              <FileName>joystick.c</FileName>
+              <FileType>1</FileType>
+              <FilePath>.\joystick.c</FilePath>
+            </File>
+            <File>
+              <FileName>temp.c</FileName>
+              <FileType>1</FileType>
+              <FilePath>.\temp.c</FilePath>
+            </File>
           </Files>
         </Group>
         <Group>

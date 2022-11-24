@@ -4,7 +4,7 @@
 #include "stm32f4xx_hal.h"
 #include "string.h"
 
-static osThreadId_t id_lcd;
+static osThreadId_t id_Th_lcd;
 static osMessageQueueId_t id_MsgQueue_lcd;
 static MSGQUEUE_OBJ_LCD msg;
 
@@ -15,7 +15,7 @@ TIM_HandleTypeDef tim7;
 unsigned char buffer[512] = {0x00};
 static uint16_t positionL1, positionL2 = 0;
 
-void Th_lcd(void *argument);
+static void Th_lcd(void *argument);
 
 static void update_data(MSGQUEUE_OBJ_LCD msg);
 static void LCD_init(void);
@@ -28,14 +28,14 @@ static void symbolToLocalBuffer_L1(uint8_t symbol);
 static void symbolToLocalBuffer_L2(uint8_t symbol);
 
 osThreadId_t get_id_Th_lcd(void){
-	return id_lcd;
+	return id_Th_lcd;
 }
 
 osMessageQueueId_t get_id_MsgQueue_lcd(void){
 	return id_MsgQueue_lcd;
 }
 
-static int Init_MsgQueue_joy(void){
+static int Init_MsgQueue_lcd(void){
   id_MsgQueue_lcd = osMessageQueueNew(MSGQUEUE_OBJECTS_LCD, sizeof(MSGQUEUE_OBJ_LCD), NULL);
   if(id_MsgQueue_lcd == NULL)
     return (-1); 
@@ -43,13 +43,13 @@ static int Init_MsgQueue_joy(void){
 }
 
 int Init_Th_lcd(void){
-  id_lcd = osThreadNew(Th_lcd, NULL, NULL);
-  if(id_lcd == NULL)
+  id_Th_lcd = osThreadNew(Th_lcd, NULL, NULL);
+  if(id_Th_lcd == NULL)
     return(-1);
-  return(Init_MsgQueue_joy());
+  return(Init_MsgQueue_lcd());
 }
 
-void Th_lcd(void *argument) {
+static void Th_lcd(void *argument) {
 	LCD_init();
 	LCD_update();
 	while(1){
@@ -59,8 +59,8 @@ void Th_lcd(void *argument) {
 	}
 }
 
-void update_data(MSGQUEUE_OBJ_LCD msg){
-		int i, j;
+static void update_data(MSGQUEUE_OBJ_LCD msg){
+	int i, j;
 	positionL1 = msg.init_L1;
 	positionL2 = msg.init_L2;
 	for(i = 0; i < positionL1; i++){
@@ -74,7 +74,6 @@ void update_data(MSGQUEUE_OBJ_LCD msg){
 		buffer[i] = 0x00;
 		buffer[i+128] = 0x00;
 	}
-	LCD_update();
 	
 	for(j = 0; j < positionL2; j++){
 		buffer[j+256] = 0x00;
@@ -220,7 +219,6 @@ static void symbolToLocalBuffer_L1(uint8_t symbol){
 		buffer[i + 128 + positionL1] = value2;
 	}
 	positionL1 = positionL1 + Arial12x12[offset];
-	//LCD_update();
 }
 
 static void symbolToLocalBuffer_L2(uint8_t symbol){
@@ -234,5 +232,4 @@ static void symbolToLocalBuffer_L2(uint8_t symbol){
 		buffer[i + 384 + positionL2] = value2;
 	}
 	positionL2 = positionL2 + Arial12x12[offset];
-	//LCD_update();
 }

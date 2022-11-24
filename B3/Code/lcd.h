@@ -7,12 +7,14 @@
 
 typedef struct {
 	char data_L1[32];
-	uint16_t init_L1;
+	uint8_t init_L1;
 	char data_L2[32];
-	uint16_t init_L2;
+	uint8_t init_L2;
 } MSGQUEUE_OBJ_LCD;
 
 int Init_Th_lcd(void);
+int Init_Th_lcd_test(void);
+
 osThreadId_t get_id_Th_lcd(void);
 osMessageQueueId_t get_id_MsgQueue_lcd(void);
 

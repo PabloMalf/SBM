@@ -5,51 +5,64 @@
 #define CICLOS_FLAG 0X02
 #define IRQ_FLAG    0x04
 
-static osThreadId_t tid_joystick;
-static osMessageQueueId_t mid_MsgQueue_joy;
+static osThreadId_t id_Th_joystick;
+static osThreadId_t id_Th_joystick_test;
+static osMessageQueueId_t id_MsgQueue_joystick;
 static MSGQUEUE_OBJ_JOY msg;
 
 static osTimerId_t Tmr_rebote;
 static osTimerId_t Tmr_ciclos;
 static uint32_t flags;
 static uint8_t valida = 0;
-static uint8_t ciclos = 0;
+static uint8_t cnt = 0;
+static uint8_t max_cnt = ((PULSACION_TIEMPO / 50) - 1);
 
 void Th_joystick(void *argument);
 static void conf_pins(void);
 static uint8_t check_pins(void);
 
-osThreadId_t id_Th_joystickstick(void){
-	return tid_joystick;
+osThreadId_t get_id_Th_joystickstick(void){
+	return id_Th_joystick;
 }
 
-osMessageQueueId_t id_MsgQueue_joystick(void){
-	return mid_MsgQueue_joy;
+osThreadId_t get_id_Th_joystickstick_test(void){
+	return id_Th_joystick_test;
+}
+
+osMessageQueueId_t get_id_MsgQueue_joystick(void){
+	return id_MsgQueue_joystick;
 }
 
 static int Init_MsgQueue_joy(void){
-  mid_MsgQueue_joy = osMessageQueueNew(MSGQUEUE_OBJECTS_JOY, sizeof(MSGQUEUE_OBJ_JOY), NULL);
-  if(mid_MsgQueue_joy == NULL)
+  id_MsgQueue_joystick = osMessageQueueNew(MSGQUEUE_OBJECTS_JOY, sizeof(MSGQUEUE_OBJ_JOY), NULL);
+  if(id_MsgQueue_joystick == NULL)
     return (-1); 
   return(0);
 }
 
 int Init_Th_joystick(void){
-  tid_joystick = osThreadNew(Th_joystick, NULL, NULL);
-  if(tid_joystick == NULL)
+  id_Th_joystick = osThreadNew(Th_joystick, NULL, NULL);
+  if(id_Th_joystick == NULL)
     return(-1);
   return(Init_MsgQueue_joy());
 }
 
+int Init_Th_joystick_test(void){
+  id_Th_joystick_test = osThreadNew(Th_joystick, NULL, NULL);
+  if(id_Th_joystick_test == NULL)
+    return(-1);
+  return(0);
+}
+
 static void tmr_rebote_Callback (void* argument) {
-	osThreadFlagsSet(tid_joystick, REBOTE_FLAG);
+	osThreadFlagsSet(id_Th_joystick, REBOTE_FLAG);
 }
 
 static void tmr_ciclos_Callback (void* argument) {
-  osThreadFlagsSet(tid_joystick, CICLOS_FLAG);
+  osThreadFlagsSet(id_Th_joystick, CICLOS_FLAG);
 }
 
-void Th_joystick (void *argument) {
+void Th_joystick(void *argument) {
 	conf_pins();
 	Tmr_rebote = osTimerNew(tmr_rebote_Callback, osTimerOnce, (void *)0, NULL);
 	Tmr_ciclos = osTimerNew(tmr_ciclos_Callback, osTimerPeriodic, (void *)0, NULL);
@@ -61,26 +74,30 @@ void Th_joystick (void *argument) {
 		if(flags & REBOTE_FLAG){
 			if(check_pins()){
 				valida = 1;
-				ciclos = 0;
+				cnt = 0;
 				osTimerStart(Tmr_ciclos, 50U);
 			} 
 		}
 		if(flags & CICLOS_FLAG){
-			if(ciclos == 29){
-				ciclos = 0;
+			if(cnt == max_cnt){
+				cnt = 0;
 				msg.duracion = Larga;
 				osTimerStop(Tmr_ciclos);
-				osMessageQueuePut(mid_MsgQueue_joy, &msg, 0U, 0U);
+				osMessageQueuePut(id_MsgQueue_joystick, &msg, 0U, 0U);
 			}else if(check_pins()){
-				ciclos ++;
+				cnt ++;
 			} 
 			else if(valida == 1){
 				msg.duracion = Corta;
 				osTimerStop(Tmr_ciclos);
-				osMessageQueuePut(mid_MsgQueue_joy, &msg, 0U, 0U);
+				osMessageQueuePut(id_MsgQueue_joystick, &msg, 0U, 0U);
 			}
 		}
   }
+}
+
+void Th_joystick_test(void *argument) {
+	;
 }
 
 void EXTI15_10_IRQHandler(void){
@@ -114,7 +131,7 @@ void HAL_GPIO_EXTI_Callback(uint16_t GPIO_Pin){
 			msg.tecla = Centro;
 		break;
 	}
-	osThreadFlagsSet(tid_joystick, IRQ_FLAG);
+	osThreadFlagsSet(id_Th_joystick, IRQ_FLAG);
 }
 
 static uint8_t check_pins(void){
@@ -122,7 +139,7 @@ static uint8_t check_pins(void){
 		 (HAL_GPIO_ReadPin (GPIOB, GPIO_PIN_11) == GPIO_PIN_SET)|
 		 (HAL_GPIO_ReadPin (GPIOE, GPIO_PIN_12) == GPIO_PIN_SET)|
 		 (HAL_GPIO_ReadPin (GPIOE, GPIO_PIN_14) == GPIO_PIN_SET)|
-		 (HAL_GPIO_ReadPin (GPIOE, GPIO_PIN_15) == GPIO_PIN_SET){
+		 (HAL_GPIO_ReadPin (GPIOE, GPIO_PIN_15) == GPIO_PIN_SET)){
 		return(1);
 	}
 	return(0);
