@@ -243,9 +243,7 @@ int Init_Th_lcd_test(void){
 		return(-1);
 	return(0);
 }
-static void Test_Th_pwm(void *arguments){
-	Init_Th_lcd();
-	
+static void Test_Th_pwm(void *arguments){	
 	MSGQUEUE_OBJ_LCD msg2;
 	
 	static float valor1= 27.156;
@@ -253,9 +251,10 @@ static void Test_Th_pwm(void *arguments){
 	static uint8_t min= 10;
 	static uint8_t seg= 0;
 	
+	Init_Th_lcd();
+	
 	msg2.init_L1= 4;
 	sprintf(msg2.data_L1, "SBM 2022  T: %.1fºC", valor1);
-	
 	msg2.init_L2=45;
 	
 	while(1){
