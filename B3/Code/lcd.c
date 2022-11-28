@@ -3,7 +3,9 @@
 #include "Driver_SPI.h"
 #include "stm32f4xx_hal.h"
 #include "string.h"
+#include <stdio.h>
 
+static osThreadId_t id_Th_Test_Th_lcd;
 static osThreadId_t id_Th_lcd;
 static osMessageQueueId_t id_MsgQueue_lcd;
 static MSGQUEUE_OBJ_LCD msg;
@@ -15,6 +17,7 @@ TIM_HandleTypeDef tim7;
 unsigned char buffer[512] = {0x00};
 static uint16_t positionL1, positionL2 = 0;
 
+static void Test_Th_pwm(void *arguments);
 static void Th_lcd(void *argument);
 
 static void update_data(MSGQUEUE_OBJ_LCD msg);
@@ -56,6 +59,7 @@ static void Th_lcd(void *argument) {
 		if(osMessageQueueGet(id_MsgQueue_lcd, &msg, NULL, 0U) == osOK){
 			update_data(msg);
 		}
+	osThreadYield();
 	}
 }
 
@@ -172,12 +176,12 @@ static void LCD_wr_cmd(unsigned char cmd){
 void LCD_init(void){
 	LCD_reset();
 	LCD_wr_cmd(0xAE);//display off
-	LCD_wr_cmd(0xA2);//Fija el valor de la tensión de polarización del LCD a 1/9
+	LCD_wr_cmd(0xA2);//Fija el valor de la tensiÃ³n de polarizaciÃ³n del LCD a 1/9
 	LCD_wr_cmd(0xA0);//El direccionamiento de la RAM de datos del display es la normal
 	LCD_wr_cmd(0xC8);//El scan en las salidas COM es el normal
-	LCD_wr_cmd(0x22);//Fija la relación de resistencias interna a 2
+	LCD_wr_cmd(0x22);//Fija la relaciÃ³n de resistencias interna a 2
 	LCD_wr_cmd(0x2F);//Power on
-	LCD_wr_cmd(0x40);//Display empieza en la línea 0
+	LCD_wr_cmd(0x40);//Display empieza en la lÃ­nea 0
 	LCD_wr_cmd(0xAF);//Display ON
 	LCD_wr_cmd(0x81);//Contraste
 	LCD_wr_cmd(0x17);//Valor de contraste
@@ -232,4 +236,36 @@ static void symbolToLocalBuffer_L2(uint8_t symbol){
 		buffer[i + 384 + positionL2] = value2;
 	}
 	positionL2 = positionL2 + Arial12x12[offset];
+}
+int Init_Th_lcd_test(void){
+	id_Th_Test_Th_lcd= osThreadNew(Test_Th_pwm, NULL, NULL);
+	if(id_Th_Test_Th_lcd== NULL)
+		return(-1);
+	return(0);
+}
+static void Test_Th_pwm(void *arguments){
+	Init_Th_lcd();
+	
+	MSGQUEUE_OBJ_LCD msg2;
+	
+	static float valor1= 27.156;
+	static uint8_t hora= 19;
+	static uint8_t min= 10;
+	static uint8_t seg= 0;
+	
+	msg2.init_L1= 4;
+	sprintf(msg2.data_L1, "SBM 2022  T: %.1fÂºC", valor1);
+	
+	msg2.init_L2=45;
+	
+	while(1){
+		
+		seg== 59? 	seg= 0, min++: seg++;
+		min== 59? 	min= 0, hora++: NULL;
+		hora== 59? 	hora=0: NULL;
+		
+		sprintf(msg2.data_L2, "%.2u:%.2u:%.2u", hora, min, seg);
+		osMessageQueuePut(get_id_MsgQueue_lcd(), &msg2, NULL, 0U);
+		osDelay(1000);
+	}
 }
