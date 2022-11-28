@@ -6,7 +6,7 @@
 #define MSGQUEUE_OBJECTS_TEMP 4
 
 typedef struct {
-	int a;
+	float temperature;
 } MSGQUEUE_OBJ_TEMP;
 
 int Init_Th_temp(void);

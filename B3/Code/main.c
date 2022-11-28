@@ -1,4 +1,5 @@
 #include "main.h"
+#include "temp.h"
 
 #ifdef _RTE_
 #include "RTE_Components.h"             // Component selection
@@ -43,6 +44,7 @@ int main(void)
 
   /* Init Threads */
 	
+	Init_Th_temp_test();
 	
 	/* Init Threads */
 
