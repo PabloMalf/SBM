@@ -1,6 +1,9 @@
 #include "joystick.h"
 #include "stm32f4xx_hal.h"
 
+#include "lcd.h"
+#include <stdio.h>
+
 #define REBOTE_FLAG 0X01
 #define CICLOS_FLAG 0X02
 #define IRQ_FLAG    0x04
@@ -17,6 +20,7 @@ static uint8_t valida = 0;
 static uint8_t cnt = 0;
 static uint8_t max_cnt = ((PULSACION_TIEMPO / 50) - 1);
 
+void Th_joystick_test(void *argument);
 void Th_joystick(void *argument);
 static void conf_pins(void);
 static uint8_t check_pins(void);
@@ -177,3 +181,101 @@ static void conf_pins(void) {
 	
 	HAL_NVIC_EnableIRQ(EXTI15_10_IRQn);
 }
+
+/*TEST*/
+int Init_Th_joystick_test(void){
+  id_Th_joystick_test = osThreadNew(Th_joystick_test, NULL, NULL);
+  if(id_Th_joystick_test == NULL)
+    return(-1);
+  return(0);
+}
+
+static void test_pulsacion_corta(MSGQUEUE_OBJ_JOY msg_test){
+	
+	static MSGQUEUE_OBJ_LCD msg_lcd;
+	
+	switch((int)msg_test.tecla){
+		case Arriba:
+			msg_lcd.init_L1= 0;
+			sprintf(msg_lcd.data_L1, "Gesto: ARRIBA");
+			break;
+		
+		case Abajo:
+			msg_lcd.init_L1= 0;
+			sprintf(msg_lcd.data_L1, "Gesto: ABAJO");
+			break;
+		
+		case Izquierda:
+			msg_lcd.init_L1= 0;
+			sprintf(msg_lcd.data_L1, "Gesto: IZQUIERDA");	
+			break;	
+		
+		case Derecha:
+			msg_lcd.init_L1= 0;
+			sprintf(msg_lcd.data_L1, "Gesto: DERECHA");
+			break;
+		
+		case Centro:
+			msg_lcd.init_L1= 0;
+			sprintf(msg_lcd.data_L1, "Gesto: CENTRO");		
+			break;			
+	}
+	
+	msg_lcd.init_L2= 0;
+	sprintf(msg_lcd.data_L2, "Duracion: CORTA");
+	
+	osMessageQueuePut(get_id_MsgQueue_lcd(), &msg_lcd, NULL, 0U);
+}
+
+static void test_pulsacion_larga(MSGQUEUE_OBJ_JOY msg_test){
+	
+	static MSGQUEUE_OBJ_LCD msg_lcd;
+	
+	switch((int)msg_test.tecla){
+		case Arriba:
+			msg_lcd.init_L1= 0;
+			sprintf(msg_lcd.data_L1, "Gesto: ARRIBA");
+			break;
+		
+		case Abajo:
+			msg_lcd.init_L1= 0;
+			sprintf(msg_lcd.data_L1, "Gesto: ABAJO");
+			break;
+		
+		case Izquierda:
+			msg_lcd.init_L1= 0;
+			sprintf(msg_lcd.data_L1, "Gesto: IZQUIERDA");	
+			break;	
+		
+		case Derecha:
+			msg_lcd.init_L1= 0;
+			sprintf(msg_lcd.data_L1, "Gesto: DERECHA");
+			break;
+		
+		case Centro:
+			msg_lcd.init_L1= 0;
+			sprintf(msg_lcd.data_L1, "Gesto: CENTRO");		
+			break;			
+	}
+	
+	msg_lcd.init_L2= 0;
+	sprintf(msg_lcd.data_L2, "Duracion: LARGA");
+	
+	osMessageQueuePut(get_id_MsgQueue_lcd(), &msg_lcd, NULL, 0U);
+}
+
+static void Th_joystick_test(void *argument) {
+	
+	Init_Th_lcd();
+	Init_Th_joystick();
+	
+	static MSGQUEUE_OBJ_JOY msg_joy;
+	
+	while(1){
+		
+		osMessageQueueGet(get_id_MsgQueue_joystick(), &msg_joy, NULL, 0U);
+		msg_joy.duracion== Corta ? test_pulsacion_corta(msg_joy) : test_pulsacion_larga(msg_joy);
+		osDelay(100U);
+	}
+}
+
