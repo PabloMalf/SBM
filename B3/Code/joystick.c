@@ -24,13 +24,10 @@ void Th_joystick_test(void *argument);
 void Th_joystick(void *argument);
 static void conf_pins(void);
 static uint8_t check_pins(void);
+static void led_init(void);
 
 osThreadId_t get_id_Th_joystickstick(void){
 	return id_Th_joystick;
-}
-
-osThreadId_t get_id_Th_joystickstick_test(void){
-	return id_Th_joystick_test;
 }
 
 osMessageQueueId_t get_id_MsgQueue_joystick(void){
@@ -179,91 +176,69 @@ int Init_Th_joystick_test(void){
   return(0);
 }
 
-static void test_pulsacion_corta(MSGQUEUE_OBJ_JOY msg_test){
-	
-	static MSGQUEUE_OBJ_LCD msg_lcd;
-	
-	switch((int)msg_test.tecla){
-		case Arriba:
-			msg_lcd.init_L1= 0;
-			sprintf(msg_lcd.data_L1, "Gesto: ARRIBA");
-			break;
-		
-		case Abajo:
-			msg_lcd.init_L1= 0;
-			sprintf(msg_lcd.data_L1, "Gesto: ABAJO");
-			break;
-		
-		case Izquierda:
-			msg_lcd.init_L1= 0;
-			sprintf(msg_lcd.data_L1, "Gesto: IZQUIERDA");	
-			break;	
-		
-		case Derecha:
-			msg_lcd.init_L1= 0;
-			sprintf(msg_lcd.data_L1, "Gesto: DERECHA");
-			break;
-		
-		case Centro:
-			msg_lcd.init_L1= 0;
-			sprintf(msg_lcd.data_L1, "Gesto: CENTRO");		
-			break;			
-	}
-	
-	msg_lcd.init_L2= 0;
-	sprintf(msg_lcd.data_L2, "Duracion: CORTA");
-	
-	osMessageQueuePut(get_id_MsgQueue_lcd(), &msg_lcd, NULL, 0U);
-}
-
-static void test_pulsacion_larga(MSGQUEUE_OBJ_JOY msg_test){
-	
-	static MSGQUEUE_OBJ_LCD msg_lcd;
-	
-	switch((int)msg_test.tecla){
-		case Arriba:
-			msg_lcd.init_L1= 0;
-			sprintf(msg_lcd.data_L1, "Gesto: ARRIBA");
-			break;
-		
-		case Abajo:
-			msg_lcd.init_L1= 0;
-			sprintf(msg_lcd.data_L1, "Gesto: ABAJO");
-			break;
-		
-		case Izquierda:
-			msg_lcd.init_L1= 0;
-			sprintf(msg_lcd.data_L1, "Gesto: IZQUIERDA");	
-			break;	
-		
-		case Derecha:
-			msg_lcd.init_L1= 0;
-			sprintf(msg_lcd.data_L1, "Gesto: DERECHA");
-			break;
-		
-		case Centro:
-			msg_lcd.init_L1= 0;
-			sprintf(msg_lcd.data_L1, "Gesto: CENTRO");		
-			break;			
-	}
-	
-	msg_lcd.init_L2= 0;
-	sprintf(msg_lcd.data_L2, "Duracion: LARGA");
-	
-	osMessageQueuePut(get_id_MsgQueue_lcd(), &msg_lcd, NULL, 0U);
-}
-
 static void Th_joystick_test(void *argument) {
-	
-	Init_Th_lcd();
+	led_init();
 	Init_Th_joystick();
-	
-	static MSGQUEUE_OBJ_JOY msg_joy;
-	
+	static MSGQUEUE_OBJ_JOY msg_test;
 	while(1){
-		
-		osMessageQueueGet(get_id_MsgQueue_joystick(), &msg_joy, NULL, 0U);
-		msg_joy.duracion== Corta ? test_pulsacion_corta(msg_joy) : test_pulsacion_larga(msg_joy);
-		osDelay(100U);
+		osMessageQueueGet(get_id_MsgQueue_joystick(), &msg_test, NULL, 0U);
+		switch(msg_test.tecla){
+			case Arriba:
+				HAL_GPIO_WritePin(GPIOB, GPIO_PIN_0, GPIO_PIN_SET);
+				HAL_GPIO_WritePin(GPIOB, GPIO_PIN_7, GPIO_PIN_RESET);
+				HAL_GPIO_WritePin(GPIOB, GPIO_PIN_14, GPIO_PIN_RESET);
+			break;
+			
+			case Derecha:
+				HAL_GPIO_WritePin(GPIOB, GPIO_PIN_0, GPIO_PIN_RESET);
+				HAL_GPIO_WritePin(GPIOB, GPIO_PIN_7, GPIO_PIN_SET);
+				HAL_GPIO_WritePin(GPIOB, GPIO_PIN_14, GPIO_PIN_RESET);
+			break;
+			
+			case Abajo:
+				HAL_GPIO_WritePin(GPIOB, GPIO_PIN_0, GPIO_PIN_SET);
+				HAL_GPIO_WritePin(GPIOB, GPIO_PIN_7, GPIO_PIN_SET);
+				HAL_GPIO_WritePin(GPIOB, GPIO_PIN_14, GPIO_PIN_RESET);
+			break;
+			
+			case Izquierda:
+				HAL_GPIO_WritePin(GPIOB, GPIO_PIN_0, GPIO_PIN_RESET);
+				HAL_GPIO_WritePin(GPIOB, GPIO_PIN_7, GPIO_PIN_RESET);
+				HAL_GPIO_WritePin(GPIOB, GPIO_PIN_14, GPIO_PIN_SET);
+			break;
+			
+			case Centro:
+				HAL_GPIO_WritePin(GPIOB, GPIO_PIN_0, GPIO_PIN_SET);
+				HAL_GPIO_WritePin(GPIOB, GPIO_PIN_7, GPIO_PIN_RESET);
+				HAL_GPIO_WritePin(GPIOB, GPIO_PIN_14, GPIO_PIN_SET);
+			break;
+		}
+		switch(msg_test.duracion){
+			case Corta:
+				osDelay(500);
+			break;
+			
+			case Larga:
+				osDelay(100);
+			break;
+		}
+		HAL_GPIO_WritePin(GPIOB, GPIO_PIN_0, GPIO_PIN_RESET);
+		HAL_GPIO_WritePin(GPIOB, GPIO_PIN_7, GPIO_PIN_RESET);
+		HAL_GPIO_WritePin(GPIOB, GPIO_PIN_14, GPIO_PIN_RESET);
 	}
 }
+
+static void led_init(void){
+	static GPIO_InitTypeDef GPIO_InitStruct;
+	
+	__HAL_RCC_GPIOB_CLK_ENABLE();
+	GPIO_InitStruct.Mode = GPIO_MODE_OUTPUT_PP;
+	GPIO_InitStruct.Pull = GPIO_PULLUP;
+	GPIO_InitStruct.Speed = GPIO_SPEED_FREQ_VERY_HIGH;
+	
+	GPIO_InitStruct.Pin = GPIO_PIN_0 | GPIO_PIN_7 | GPIO_PIN_14;
+	HAL_GPIO_Init(GPIOB, &GPIO_InitStruct);
+	
+	HAL_GPIO_WritePin(GPIOB, (GPIO_PIN_0 | GPIO_PIN_7 | GPIO_PIN_14), GPIO_PIN_RESET);
+}
+
