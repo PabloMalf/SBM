@@ -51,13 +51,6 @@ int Init_Th_joystick(void){
   return(Init_MsgQueue_joy());
 }
 
-int Init_Th_joystick_test(void){
-  id_Th_joystick_test = osThreadNew(Th_joystick, NULL, NULL);
-  if(id_Th_joystick_test == NULL)
-    return(-1);
-  return(0);
-}
-
 static void tmr_rebote_Callback (void* argument) {
 	osThreadFlagsSet(id_Th_joystick, REBOTE_FLAG);
 }
@@ -98,10 +91,6 @@ void Th_joystick(void *argument) {
 			}
 		}
   }
-}
-
-void Th_joystick_test(void *argument) {
-	;
 }
 
 void EXTI15_10_IRQHandler(void){
@@ -278,4 +267,3 @@ static void Th_joystick_test(void *argument) {
 		osDelay(100U);
 	}
 }
-
