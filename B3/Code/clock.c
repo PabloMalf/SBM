@@ -1,14 +1,14 @@
 #include "clock.h"
-#include "lcd.h"
-#include <stdio.h>
+#include "stm32f4xx_hal.h"
 
-uint8_t hours;
-uint8_t minutes;
-uint8_t seconds;
+extern uint8_t hours;
+extern uint8_t minutes;
+extern uint8_t seconds;
 
 static void Th_clock(void *argument);
 static void Th_clock_test(void *argument);
 static void Timer_Callback(void *argument);
+static void led_init(void);
 
 static osTimerId_t tim_clock;
 static osThreadId_t id_Th_clock;
@@ -20,24 +20,12 @@ int Init_Th_clock(void) {
     return(-1);
   return(0);
 }
-
-int Init_Th_clock_test(void) {
-  id_Th_clock_test = osThreadNew(Th_clock, NULL, NULL);
-  if (id_Th_clock_test == NULL)
-    return(-1);
-  return(0);
-}
  
 void Th_clock(void *argument){
-	//hours = minutes = seconds = 0;
-  tim_clock = osTimerNew(Timer_Callback, osTimerPeriodic, NULL, NULL);
+	tim_clock = osTimerNew(Timer_Callback, osTimerPeriodic, NULL, NULL);
 	osTimerStart(tim_clock, 1000U);
   while(1)	
 		osThreadYield();
-}
-
-static void Th_clock_test(void *argument){
-	;
 }
 
 static void Timer_Callback(void *argument){
@@ -62,33 +50,45 @@ void set_clock (uint8_t hour, uint8_t min, uint8_t sec) {
 }
 
 /*TEST*/
-
 int Init_Th_clock_test(void){
-	
-	id_Th_clock_test= osThreadNew(Th_clock_test, NULL, NULL);
+	id_Th_clock_test = osThreadNew(Th_clock_test, NULL, NULL);
 	if(id_Th_clock_test== NULL)
 		return(-1);
 	return(0);
 }
 
 static void Th_clock_test(void *arguments){
-
+	uint8_t last_sec, last_min, last_hour = 0;
+	led_init();
 	Init_Th_clock();
-	Init_Th_lcd();
-	set_clock(20,26,0);
-	
-	
-	MSGQUEUE_OBJ_LCD msg;
-	
-	msg.init_L1= 50;
-	sprintf(msg.data_L1, "HORA");
-	
-	msg.init_L2=45;
+	set_clock(23,59,50);
 	while(1){
-
-		sprintf(msg.data_L2, "%.2u:%.2u:%.2u", hours, minutes, seconds);
-		osMessageQueuePut(get_id_MsgQueue_lcd(), &msg, NULL, 0U);
-		osDelay(50U);
+		if(last_sec != seconds){
+			last_sec = seconds;
+			HAL_GPIO_TogglePin(GPIOB, GPIO_PIN_0);
+		}
+		if(last_min != minutes){
+			last_min = minutes;
+			HAL_GPIO_TogglePin(GPIOB, GPIO_PIN_7);
+		}
+		if(last_hour != hours){
+			last_hour = hours;
+			HAL_GPIO_TogglePin(GPIOB, GPIO_PIN_14);
+		}
+		osThreadYield();
 	}
 }
 
+static void led_init(void){
+	static GPIO_InitTypeDef GPIO_InitStruct;
+	
+	__HAL_RCC_GPIOB_CLK_ENABLE();
+	GPIO_InitStruct.Mode = GPIO_MODE_OUTPUT_PP;
+	GPIO_InitStruct.Pull = GPIO_PULLUP;
+	GPIO_InitStruct.Speed = GPIO_SPEED_FREQ_VERY_HIGH;
+	
+	GPIO_InitStruct.Pin = GPIO_PIN_0 | GPIO_PIN_7 | GPIO_PIN_14;
+	HAL_GPIO_Init(GPIOB, &GPIO_InitStruct);
+	
+	HAL_GPIO_WritePin(GPIOB, (GPIO_PIN_0 | GPIO_PIN_7 | GPIO_PIN_14), GPIO_PIN_SET);
+}

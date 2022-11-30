@@ -244,27 +244,34 @@ int Init_Th_lcd_test(void){
 	return(0);
 }
 static void Test_Th_pwm(void *arguments){	
-	MSGQUEUE_OBJ_LCD msg2;
+	static MSGQUEUE_OBJ_LCD msg_test;
 	
-	static float valor1= 27.156;
-	static uint8_t hora= 19;
-	static uint8_t min= 10;
-	static uint8_t seg= 0;
+	static float valor = 27.156;
+	static uint8_t hora = 19;
+	static uint8_t min = 10;
+	static uint8_t seg = 0;
 	
 	Init_Th_lcd();
 	
-	msg2.init_L1= 4;
-	sprintf(msg2.data_L1, "SBM 2022  T: %.1fºC", valor1);
-	msg2.init_L2=45;
+	msg_test.init_L1 = 4;
+	sprintf(msg_test.data_L1, "SBM 2022  T: %.1fºC", valor);
+	msg_test.init_L2 = 45;
 	
 	while(1){
-		
-		seg== 59? 	seg= 0, min++: seg++;
-		min== 59? 	min= 0, hora++: NULL;
-		hora== 59? 	hora=0: NULL;
-		
-		sprintf(msg2.data_L2, "%.2u:%.2u:%.2u", hora, min, seg);
-		osMessageQueuePut(get_id_MsgQueue_lcd(), &msg2, NULL, 0U);
+		seg++;
+		if(seg == 60){
+			seg = 0;
+			min++;
+			if(min == 60){
+				min = 0;
+				hora++;
+				if(hora == 24){
+					hora = 0;
+				}
+			}
+		}
+		sprintf(msg_test.data_L2, "%.2u:%.2u:%.2u", hora, min, seg);
+		osMessageQueuePut(get_id_MsgQueue_lcd(), &msg_test, NULL, 0U);
 		osDelay(1000);
 	}
 }
