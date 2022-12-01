@@ -1,6 +1,8 @@
 #include "clock.h"
 #include "stm32f4xx_hal.h"
 
+uint32_t sec;
+
 static void Th_clock(void *argument);
 static void Th_clock_test(void *argument);
 static void Timer_Callback(void *argument);
@@ -25,51 +27,32 @@ void Th_clock(void *argument){
 }
 
 static void Timer_Callback(void *argument){
-	seconds++;
-	if(seconds == 60){
-		seconds = 0;
-		minutes++;
-		if(minutes == 60){
-			minutes = 0;
-			hours++;
-			if(hours == 24){
-				hours = 0;
-			}
-		}
-	}
+	sec++;
 }
 
-void set_clock (uint8_t hour, uint8_t min, uint8_t sec) {
-	hours = (hour < 24) ? hour : 0;
-	minutes = (min < 60) ? min : 0;
-	seconds = (sec < 60) ? sec : 0;
+void set_clock (uint8_t hour, uint8_t min, uint8_t seg) {
+	osTimerStop(tim_clock);
+	sec = (seg + (min * 60) + (hour * 3600));
+	osTimerStart(tim_clock, 1000U);
 }
 
 /*TEST*/
 int Init_Th_clock_test(void){
 	id_Th_clock_test = osThreadNew(Th_clock_test, NULL, NULL);
-	if(id_Th_clock_test== NULL)
+	if(id_Th_clock_test == NULL)
 		return(-1);
 	return(0);
 }
 
 static void Th_clock_test(void *arguments){
-	uint8_t last_sec, last_min, last_hour = 0;
+	uint8_t last_sec = 0;
 	led_init();
 	Init_Th_clock();
 	set_clock(23, 59, 50);
-	while(1){
-		if(last_sec != seconds){
-			last_sec = seconds;
+	while(1){	
+		if(last_sec != sec){
+			last_sec = sec;
 			HAL_GPIO_TogglePin(GPIOB, GPIO_PIN_0);
-		}
-		if(last_min != minutes){
-			last_min = minutes;
-			HAL_GPIO_TogglePin(GPIOB, GPIO_PIN_7);
-		}
-		if(last_hour != hours){
-			last_hour = hours;
-			HAL_GPIO_TogglePin(GPIOB, GPIO_PIN_14);
 		}
 		osThreadYield();
 	}
@@ -83,8 +66,8 @@ static void led_init(void){
 	GPIO_InitStruct.Pull = GPIO_PULLUP;
 	GPIO_InitStruct.Speed = GPIO_SPEED_FREQ_VERY_HIGH;
 	
-	GPIO_InitStruct.Pin = GPIO_PIN_0 | GPIO_PIN_7 | GPIO_PIN_14;
+	GPIO_InitStruct.Pin = GPIO_PIN_0;
 	HAL_GPIO_Init(GPIOB, &GPIO_InitStruct);
 	
-	HAL_GPIO_WritePin(GPIOB, (GPIO_PIN_0 | GPIO_PIN_7 | GPIO_PIN_14), GPIO_PIN_SET);
+	HAL_GPIO_WritePin(GPIOB, GPIO_PIN_0, GPIO_PIN_SET);
 }
