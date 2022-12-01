@@ -3,9 +3,7 @@
 
 #include "cmsis_os2.h"
 
-uint8_t hours;
-uint8_t minutes;
-uint8_t seconds;
+extern uint32_t sec;
 
 int Init_Th_clock(void);
 int Init_Th_clock_test(void);
