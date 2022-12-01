@@ -394,26 +394,6 @@
               <FilePath>.\stm32f4xx_it.c</FilePath>
             </File>
             <File>
-              <FileName>lcd.c</FileName>
-              <FileType>1</FileType>
-              <FilePath>.\lcd.c</FilePath>
-            </File>
-            <File>
-              <FileName>clock.c</FileName>
-              <FileType>1</FileType>
-              <FilePath>.\clock.c</FilePath>
-            </File>
-            <File>
-              <FileName>joystick.c</FileName>
-              <FileType>1</FileType>
-              <FilePath>.\joystick.c</FilePath>
-            </File>
-            <File>
-              <FileName>temp.c</FileName>
-              <FileType>1</FileType>
-              <FilePath>.\temp.c</FilePath>
-            </File>
-            <File>
               <FileName>pwm.c</FileName>
               <FileType>1</FileType>
               <FilePath>.\pwm.c</FilePath>
