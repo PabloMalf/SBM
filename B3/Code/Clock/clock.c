@@ -30,10 +30,25 @@ static void Timer_Callback(void *argument){
 	sec++;
 }
 
-void set_clock (uint8_t hour, uint8_t min, uint8_t seg) {
+void set_clock (uint8_t hour, uint8_t min, uint8_t seg){
 	osTimerStop(tim_clock);
-	sec = (seg + (min * 60) + (hour * 3600));
+	multiple_to_sec(&sec, hour, min, seg);
 	osTimerStart(tim_clock, 1000U);
+}
+
+//extern uint32_t sec
+//uint8_t h, m, s;
+//sec_to_multiple(sec, &h, &m, &s);
+//multiple_to_sec(&sec, h, m, s);
+
+void multiple_to_sec(uint32_t* sec, uint8_t  hour, uint8_t  minutes, uint8_t  seconds){
+	*sec = (hour * 3600) + (minutes * 60) + seconds;
+}
+
+void sec_to_multiple(uint32_t  sec, uint8_t* hour, uint8_t* minutes, uint8_t* seconds){
+	*hour = sec / 3600;
+	*minutes = (sec - (*hour * 3600)) / 60;
+	*seconds = (sec - (*hour * 3600) - (*minutes * 60));
 }
 
 /*TEST*/
