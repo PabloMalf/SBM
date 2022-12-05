@@ -394,9 +394,9 @@
               <FilePath>.\stm32f4xx_it.c</FilePath>
             </File>
             <File>
-              <FileName>vol.c</FileName>
+              <FileName>temp.c</FileName>
               <FileType>1</FileType>
-              <FilePath>.\vol.c</FilePath>
+              <FilePath>.\temp.c</FilePath>
             </File>
           </Files>
         </Group>

@@ -13,6 +13,7 @@ static osThreadId_t id_Th_temp_test;
 static osMessageQueueId_t id_MsgQueue_temp;
 static osTimerId_t timer_meas;
 
+static void led_init(void);
 static void temp_reset(void);
 static void Th_temp(void *argument);
 static void Th_temp_test(void *argument);
@@ -51,13 +52,13 @@ static void tmr_meas_Callback(void* argument) {
 } 
 
 void Th_temp(void *argument) {
-	MSGQUEUE_OBJ_TEMP msg;
-	uint32_t flags;
-	uint8_t buf_temp[2];
-	uint8_t cmd = 0;
+	static MSGQUEUE_OBJ_TEMP msg;
+	static uint32_t flags;
+	static uint8_t buf_temp[2];
+	static uint8_t cmd = 0;
 	
 	temp_reset();
-	timer_meas = osTimerNew(tmr_meas_Callback, osTimerOnce, (void *)0, NULL);
+	timer_meas = osTimerNew(tmr_meas_Callback, osTimerPeriodic, (void *)0, NULL);
 	osTimerStart(timer_meas, 1000U);
 	while(1){
 		flags = osThreadFlagsWait(FLAG_TMR, osFlagsWaitAll, osWaitForever);
@@ -76,12 +77,44 @@ static void temp_reset(void){
 	I2Cdrv-> Initialize(NULL);
 	I2Cdrv-> PowerControl ( ARM_POWER_FULL );
 	I2Cdrv->Control      (ARM_I2C_BUS_SPEED, ARM_I2C_BUS_SPEED_FAST);
-  I2Cdrv->Control      (ARM_I2C_BUS_CLEAR, 0);
+	I2Cdrv->Control      (ARM_I2C_BUS_CLEAR, 0);
 }
 
 void Th_temp_test(void* argument){
-	MSGQUEUE_OBJ_TEMP msg;
-	if(osOK == osMessageQueueGet(id_MsgQueue_temp, &msg, 0U, 0U)){
-		;
+	static MSGQUEUE_OBJ_TEMP msg;
+	float temp_prev = 1;
+	led_init();
+	Init_Th_temp();
+	while(1){
+		if(osOK == osMessageQueueGet(id_MsgQueue_temp, &msg, 0U, 0U)){
+			HAL_GPIO_TogglePin(GPIOB, GPIO_PIN_7);
+			if(msg.temperature > temp_prev){
+				HAL_GPIO_WritePin(GPIOB, GPIO_PIN_0, GPIO_PIN_SET);
+				HAL_GPIO_WritePin(GPIOB, GPIO_PIN_14, GPIO_PIN_RESET);
+			}
+			else if(msg.temperature < temp_prev){
+				HAL_GPIO_WritePin(GPIOB, GPIO_PIN_0, GPIO_PIN_RESET);
+				HAL_GPIO_WritePin(GPIOB, GPIO_PIN_14, GPIO_PIN_SET);
+			}
+			else{
+				HAL_GPIO_WritePin(GPIOB, GPIO_PIN_0, GPIO_PIN_RESET);
+				HAL_GPIO_WritePin(GPIOB, GPIO_PIN_14, GPIO_PIN_RESET);
+			}
+			temp_prev = msg.temperature;
+		}
 	}
+}
+
+static void led_init(void){
+	static GPIO_InitTypeDef GPIO_InitStruct;
+	
+	__HAL_RCC_GPIOB_CLK_ENABLE();
+	GPIO_InitStruct.Mode = GPIO_MODE_OUTPUT_PP;
+	GPIO_InitStruct.Pull = GPIO_PULLUP;
+	GPIO_InitStruct.Speed = GPIO_SPEED_FREQ_VERY_HIGH;
+	
+	GPIO_InitStruct.Pin = GPIO_PIN_0 | GPIO_PIN_7 | GPIO_PIN_14;
+	HAL_GPIO_Init(GPIOB, &GPIO_InitStruct);
+	
+	HAL_GPIO_WritePin(GPIOB, (GPIO_PIN_0 | GPIO_PIN_7 | GPIO_PIN_14), GPIO_PIN_RESET);
 }
