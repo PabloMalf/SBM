@@ -5,6 +5,8 @@
 #include "string.h"
 #include <stdio.h>
 
+#define FLAG_CALLBACK_SPI 0x01
+
 static osThreadId_t id_Th_Test_Th_lcd;
 static osThreadId_t id_Th_lcd;
 static osMessageQueueId_t id_MsgQueue_lcd;
@@ -64,31 +66,29 @@ static void Th_lcd(void *argument) {
 }
 
 static void update_data(MSGQUEUE_OBJ_LCD msg){
-	int i, j;
-	positionL1 = msg.init_L1;
-	positionL2 = msg.init_L2;
-	for(i = 0; i < positionL1; i++){
-		buffer[i] = 0x00;
-		buffer[i+128] = 0x00;
-	}	
-	for(i = 0; i < strlen(msg.data_L1); i++){
-		symbolToLocalBuffer_L1(msg.data_L1[i]);
-	}
-	for(i = positionL1; i < 128; i++){
-		buffer[i] = 0x00;
-		buffer[i+128] = 0x00;
-	}
-	
-	for(j = 0; j < positionL2; j++){
-		buffer[j+256] = 0x00;
-		buffer[j+384] = 0x00;
-	}	
-	for(j = 0; j < strlen(msg.data_L2); j++){
-		symbolToLocalBuffer_L2(msg.data_L2[j]);
-	}
-	for(j = positionL2; j < 128; j++){
-		buffer[j+256] = 0x00;
-		buffer[j+384] = 0x00;
+	int i;
+	switch(msg.linea){
+		case sup:
+			positionL1 = 0;
+			for(i = 0; i < strlen(msg.data); i++){
+				symbolToLocalBuffer_L1(msg.data[i]);
+			}
+			for(i = positionL1; i < 128; i++){
+				buffer[i +   0] = 0x00;
+				buffer[i + 128] = 0x00;
+			}
+		break;
+		
+		case inf:
+			positionL2 = 0;
+			for(i = 0; i < strlen(msg.data); i++){
+				symbolToLocalBuffer_L2(msg.data[i]);
+			}
+			for(i = positionL2; i < 128; i++){
+				buffer[i + 256] = 0x00;
+				buffer[i + 384] = 0x00;
+			}
+		break;
 	}
 	LCD_update();
 }
@@ -109,6 +109,10 @@ static void delay(uint32_t n_microsegundos){
 	HAL_TIM_Base_DeInit(&tim7);
 		
 	__HAL_RCC_TIM7_CLK_DISABLE();
+}
+
+static void callback_spi(){
+	osThreadFlagsSet(id_Th_lcd, FLAG_CALLBACK_SPI);
 }
 
 static void LCD_reset(void){
@@ -141,7 +145,7 @@ static void LCD_reset(void){
 	HAL_GPIO_WritePin(GPIOA, GPIO_PIN_6, GPIO_PIN_SET);
 	
 	/*SPI*/
-	SPIdrv->Initialize(NULL);
+	SPIdrv->Initialize(callback_spi);
   SPIdrv-> PowerControl(ARM_POWER_FULL);
   SPIdrv-> Control(ARM_SPI_MODE_MASTER | ARM_SPI_CPOL1_CPHA1 | ARM_SPI_MSB_LSB | ARM_SPI_DATA_BITS (8), 20000000);
 	
@@ -156,9 +160,7 @@ static void LCD_wr_data(unsigned char data){
 	HAL_GPIO_WritePin(GPIOD, GPIO_PIN_14, GPIO_PIN_RESET);
 	HAL_GPIO_WritePin(GPIOF, GPIO_PIN_13, GPIO_PIN_SET);
 	SPIdrv->Send(&data, sizeof(data));
-	do{
-		stat = SPIdrv->GetStatus();
-	}while(stat.busy);
+	osThreadFlagsWait(FLAG_CALLBACK_SPI, osFlagsWaitAll, osWaitForever);
 	HAL_GPIO_WritePin(GPIOD, GPIO_PIN_14, GPIO_PIN_SET);
 }
 
@@ -167,9 +169,7 @@ static void LCD_wr_cmd(unsigned char cmd){
 	HAL_GPIO_WritePin(GPIOD, GPIO_PIN_14, GPIO_PIN_RESET);
 	HAL_GPIO_WritePin(GPIOF, GPIO_PIN_13, GPIO_PIN_RESET);
 	SPIdrv->Send(&cmd, sizeof(cmd));
-	do{
-		stat = SPIdrv->GetStatus();
-	}	while(stat.busy);
+	osThreadFlagsWait(FLAG_CALLBACK_SPI, osFlagsWaitAll, osWaitForever);
 	HAL_GPIO_WritePin(GPIOD, GPIO_PIN_14, GPIO_PIN_SET);
 }
 
@@ -252,10 +252,10 @@ static void Test_Th_lcd(void *arguments){
 	static uint8_t seg = 0;
 	
 	Init_Th_lcd();
-	
-	msg_test.init_L1 = 4;
-	sprintf(msg_test.data_L1, "SBM 2022  T: %.1fºC", valor);
-	msg_test.init_L2 = 45;
+
+	msg_test.linea = sup;
+	sprintf(msg_test.data, " SBM 2022  T:%.1fºC", valor);
+	osMessageQueuePut(get_id_MsgQueue_lcd(), &msg_test, NULL, 0U);
 	
 	while(1){
 		seg++;
@@ -270,7 +270,8 @@ static void Test_Th_lcd(void *arguments){
 				}
 			}
 		}
-		sprintf(msg_test.data_L2, "%.2u:%.2u:%.2u", hora, min, seg);
+		msg_test.linea = inf;
+		sprintf(msg_test.data, "      %.2u:%.2u:%.2u", hora, min, seg);
 		osMessageQueuePut(get_id_MsgQueue_lcd(), &msg_test, NULL, 0U);
 		osDelay(1000);
 	}
