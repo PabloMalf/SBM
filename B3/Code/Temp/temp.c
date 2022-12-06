@@ -3,7 +3,9 @@
 #include "stm32f4xx_hal.h"
 
 #define I2C_ADDR 0x48
+
 #define FLAG_TMR 0x01
+#define FLAG_CALLBACK_I2C 0x02
 
 extern ARM_DRIVER_I2C Driver_I2C1;
 ARM_DRIVER_I2C *I2Cdrv = &Driver_I2C1;
@@ -49,7 +51,11 @@ int Init_Th_temp_test(void){
 
 static void tmr_meas_Callback(void* argument) {
 	osThreadFlagsSet(id_Th_temp, FLAG_TMR);
-} 
+}
+
+static void callback_i2c(uint32_t event){
+	osThreadFlagsSet(id_Th_temp, FLAG_CALLBACK_I2C);
+}
 
 void Th_temp(void *argument) {
 	static MSGQUEUE_OBJ_TEMP msg;
@@ -64,9 +70,9 @@ void Th_temp(void *argument) {
 		flags = osThreadFlagsWait(FLAG_TMR, osFlagsWaitAll, osWaitForever);
 		if(flags & FLAG_TMR){
 			I2Cdrv->MasterTransmit(I2C_ADDR, &cmd , 2, true);
-			while(I2Cdrv->GetStatus().busy){};
+			osThreadFlagsWait(FLAG_CALLBACK_I2C, osFlagsWaitAll, osWaitForever);
 			I2Cdrv->MasterReceive(I2C_ADDR, buf_temp, 2, false);
-			while(I2Cdrv->GetStatus().busy){};
+			osThreadFlagsWait(FLAG_CALLBACK_I2C, osFlagsWaitAll, osWaitForever);
 			msg.temperature = (((buf_temp[0] << 8) | buf_temp[1]) >> 5) * 0.125;
 			osMessageQueuePut(id_MsgQueue_temp, &msg, 0U, 0U);
 		}
@@ -74,7 +80,7 @@ void Th_temp(void *argument) {
 }
 
 static void temp_reset(void){
-	I2Cdrv-> Initialize(NULL);
+	I2Cdrv-> Initialize(callback_i2c);
 	I2Cdrv-> PowerControl ( ARM_POWER_FULL );
 	I2Cdrv->Control      (ARM_I2C_BUS_SPEED, ARM_I2C_BUS_SPEED_FAST);
 	I2Cdrv->Control      (ARM_I2C_BUS_CLEAR, 0);
