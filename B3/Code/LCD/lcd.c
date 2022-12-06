@@ -111,7 +111,7 @@ static void delay(uint32_t n_microsegundos){
 	__HAL_RCC_TIM7_CLK_DISABLE();
 }
 
-static void callback_spi(){
+static void callback_spi(uint32_t event){
 	osThreadFlagsSet(id_Th_lcd, FLAG_CALLBACK_SPI);
 }
 
