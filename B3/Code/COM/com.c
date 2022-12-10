@@ -127,7 +127,7 @@ int Init_Th_com_test(void){
 	return(0);
 }
 
-void Th_com_test(void*arg){
+static void Th_com_test(void*arg){
 	static MSGQUEUE_OBJ_COM msg2;
 	static uint8_t cnt = 0; 
 	
