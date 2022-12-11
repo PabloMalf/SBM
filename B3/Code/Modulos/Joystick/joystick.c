@@ -1,9 +1,6 @@
 #include "joystick.h"
 #include "stm32f4xx_hal.h"
 
-#include "lcd.h"
-#include <stdio.h>
-
 #define REBOTE_FLAG 0X01
 #define CICLOS_FLAG 0X02
 #define IRQ_FLAG    0x04

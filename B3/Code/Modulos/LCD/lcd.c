@@ -56,39 +56,31 @@ int Init_Th_lcd(void){
 
 static void Th_lcd(void *argument) {
 	LCD_init();
-	LCD_update();
 	while(1){
-		if(osMessageQueueGet(id_MsgQueue_lcd, &msg, NULL, 0U) == osOK){
+		if(osMessageQueueGet(id_MsgQueue_lcd, &msg, NULL, osWaitForever) == osOK){
 			update_data(msg);
 		}
-	osThreadYield();
 	}
 }
 
-static void update_data(MSGQUEUE_OBJ_LCD msg){
-	int i;
-	switch(msg.linea){
-		case sup:
-			positionL1 = 0;
-			for(i = 0; i < strlen(msg.data); i++){
-				symbolToLocalBuffer_L1(msg.data[i]);
-			}
-			for(i = positionL1; i < 128; i++){
-				buffer[i +   0] = 0x00;
-				buffer[i + 128] = 0x00;
-			}
-		break;
-		
-		case inf:
-			positionL2 = 0;
-			for(i = 0; i < strlen(msg.data); i++){
-				symbolToLocalBuffer_L2(msg.data[i]);
-			}
-			for(i = positionL2; i < 128; i++){
-				buffer[i + 256] = 0x00;
-				buffer[i + 384] = 0x00;
-			}
-		break;
+void update_data(MSGQUEUE_OBJ_LCD msg){
+	int i, j;
+	positionL1 = positionL2 = 0;
+	
+	for(i = 0; i < strlen(msg.data_L1); i++){
+		symbolToLocalBuffer_L1(msg.data_L1[i]);
+	}
+	for(i = positionL1; i < 128; i++){
+		buffer[i] = 0x00;
+		buffer[i+128] = 0x00;
+	}
+	
+	for(j = 0; j < strlen(msg.data_L2); j++){
+		symbolToLocalBuffer_L2(msg.data_L2[j]);
+	}
+	for(j = positionL2; j < 128; j++){
+		buffer[j+256] = 0x00;
+		buffer[j+384] = 0x00;
 	}
 	LCD_update();
 }
@@ -156,7 +148,6 @@ static void LCD_reset(void){
 }
 
 static void LCD_wr_data(unsigned char data){
-	static ARM_SPI_STATUS stat;
 	HAL_GPIO_WritePin(GPIOD, GPIO_PIN_14, GPIO_PIN_RESET);
 	HAL_GPIO_WritePin(GPIOF, GPIO_PIN_13, GPIO_PIN_SET);
 	SPIdrv->Send(&data, sizeof(data));
@@ -165,7 +156,6 @@ static void LCD_wr_data(unsigned char data){
 }
 
 static void LCD_wr_cmd(unsigned char cmd){
-	static ARM_SPI_STATUS stat;
 	HAL_GPIO_WritePin(GPIOD, GPIO_PIN_14, GPIO_PIN_RESET);
 	HAL_GPIO_WritePin(GPIOF, GPIO_PIN_13, GPIO_PIN_RESET);
 	SPIdrv->Send(&cmd, sizeof(cmd));
@@ -187,6 +177,9 @@ void LCD_init(void){
 	LCD_wr_cmd(0x17);//Valor de contraste
 	LCD_wr_cmd(0xA4);//Display all points normal
 	LCD_wr_cmd(0xA6);//LCD Display Normal
+	
+	memset(buffer, 0x00, sizeof(buffer));
+	LCD_update();
 }
 
 static void LCD_update(void){
@@ -237,12 +230,14 @@ static void symbolToLocalBuffer_L2(uint8_t symbol){
 	}
 	positionL2 = positionL2 + Arial12x12[offset];
 }
+
 int Init_Th_lcd_test(void){
 	id_Th_Test_Th_lcd = osThreadNew(Test_Th_lcd, NULL, NULL);
 	if(id_Th_Test_Th_lcd== NULL)
 		return(-1);
 	return(0);
 }
+
 static void Test_Th_lcd(void *arguments){	
 	static MSGQUEUE_OBJ_LCD msg_test;
 	
@@ -253,10 +248,7 @@ static void Test_Th_lcd(void *arguments){
 	
 	Init_Th_lcd();
 
-	msg_test.linea = sup;
-	sprintf(msg_test.data, " SBM 2022  T:%.1fºC", valor);
-	osMessageQueuePut(get_id_MsgQueue_lcd(), &msg_test, NULL, 0U);
-	
+	sprintf(msg_test.data_L1, " SBM 2022  T:%.1fºC", valor);
 	while(1){
 		seg++;
 		if(seg == 60){
@@ -270,8 +262,7 @@ static void Test_Th_lcd(void *arguments){
 				}
 			}
 		}
-		msg_test.linea = inf;
-		sprintf(msg_test.data, "      %.2u:%.2u:%.2u", hora, min, seg);
+		sprintf(msg_test.data_L2, "      %.2u:%.2u:%.2u", hora, min, seg);
 		osMessageQueuePut(get_id_MsgQueue_lcd(), &msg_test, NULL, 0U);
 		osDelay(1000);
 	}

@@ -5,11 +5,9 @@
 
 #define MSGQUEUE_OBJECTS_LCD 4
 
-typedef enum{sup, inf} linea_t;
-
 typedef struct {
-	char data[32];
-	linea_t linea;
+	char data_L1[32];
+	char data_L2[32];
 } MSGQUEUE_OBJ_LCD;
 
 int Init_Th_lcd(void);

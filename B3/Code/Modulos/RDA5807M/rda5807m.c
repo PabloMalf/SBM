@@ -88,7 +88,7 @@ static void rda_init(reg_rda_t* reg, data_t* data){
 	I2Cdrv-> Control      (ARM_I2C_BUS_SPEED, ARM_I2C_BUS_SPEED_FAST);
   I2Cdrv-> Control      (ARM_I2C_BUS_CLEAR, 0);
 	
-	reg->reg2_WR = (0x0000 | RDA_CONF_HZ | RDA_CONF_nMUTE |RDA_CONF_MONO | RDA_CONF_NEW_MET);
+	reg->reg2_WR = (0x0000 | RDA_CONF_HZ | RDA_CONF_nMUTE | RDA_CONF_MONO | RDA_CONF_NEW_MET);
 	reg->reg3_WR = (0x0000);
 	reg->reg4_WR = (RDA_CONF_AFC_DIS);
 	reg->reg5_WR = (RDA_CONF_INT_MOD | RDA_CONF_SNR_TRESH | RDA_CONF_LNA_DUAL | RDA_CONF_LNA_2_1mA | RDA_CONF_INIT_VOL);
@@ -136,6 +136,8 @@ static int rda_read(reg_rda_t* reg, data_t* data){
 	reg->regE_RD = (((reg->regE_RD & data_reg[8])  << 8) | data_reg[9]);
 	reg->regF_RD = (((reg->regF_RD & data_reg[10]) << 8) | data_reg[11]);
 	
+	
+	data->freq_rssi = reg->regB_RD >> 10; 
 	data->frequency = ((reg->regA_RD & 0x03FF) + 870);
 	data->freq_rssi = reg->regB_RD >> 9;//NO FUFA
 	return 0;

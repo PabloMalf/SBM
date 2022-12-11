@@ -15,6 +15,7 @@
 #define RDA_CONF_BASS				0x2000
 #define RDA_SEEK_UP					0x0300
 #define RDA_SEEK_DOWN				0x0100
+#define RDA_SEEK_nWRAP			0x0080
 #define RDA_CONF_NEW_MET		0x0004
 #define RDA_PWR_ON					0x0001
 //Reg3

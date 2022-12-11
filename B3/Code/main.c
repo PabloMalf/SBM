@@ -1,5 +1,5 @@
 #include "main.h"
-#include "clock.h"
+#include "principal.h"
 
 #ifdef _RTE_
 #include "RTE_Components.h"             // Component selection
@@ -44,7 +44,7 @@ int main(void)
 
   /* Init Threads */
 	
-	Init_Th_clock_test();
+	Init_Th_principal();
 	
 	/* Init Threads */
 

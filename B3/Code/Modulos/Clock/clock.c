@@ -20,6 +20,7 @@ int Init_Th_clock(void) {
 }
  
 void Th_clock(void *argument){
+	set_clock(0, 0, 0);
 	tim_clock = osTimerNew(Timer_Callback, osTimerPeriodic, NULL, NULL);
 	osTimerStart(tim_clock, 1000U);
   while(1)	
