@@ -1,5 +1,8 @@
 #include "rgb.h"
 #include "stm32f4xx_hal.h"
+#include "math.h"
+
+#define RELAC_VOL_PULSE 6.6f
 
 static osThreadId_t id_Th_rgb;
 static osMessageQueueId_t id_MsgQueue_rgb;
@@ -52,12 +55,15 @@ void Th_rgb(void *argument) {
 }
 
 static void myPWM_New_Pulse(TIM_HandleTypeDef htim, TIM_OC_InitTypeDef soc, MSGQUEUE_OBJ_RGB msg){
-			HAL_TIM_PWM_Stop(&htim, TIM_CHANNEL_1);
-			HAL_TIM_PWM_DeInit(&htim);
-			soc.Pulse = (100 - msg.pulse);
-			HAL_TIM_PWM_Init(&htim);
-			HAL_TIM_PWM_ConfigChannel(&htim, &soc, TIM_CHANNEL_1);
-			HAL_TIM_PWM_Start(&htim, TIM_CHANNEL_1);
+	static uint8_t  newValor;
+	
+	newValor = round(msg.pulse*RELAC_VOL_PULSE);
+	HAL_TIM_PWM_Stop(&htim, TIM_CHANNEL_1);
+	HAL_TIM_PWM_DeInit(&htim);
+	soc.Pulse = (100 - newValor);
+	HAL_TIM_PWM_Init(&htim);
+	HAL_TIM_PWM_ConfigChannel(&htim, &soc, TIM_CHANNEL_1);
+	HAL_TIM_PWM_Start(&htim, TIM_CHANNEL_1);
 }
 
 static void myPWM_Init(GPIO_InitTypeDef *sgpio, TIM_HandleTypeDef *htim, TIM_OC_InitTypeDef *soc){
@@ -96,12 +102,12 @@ int Init_Th_rgb_test(void){
 void Th_rgb_test(void*arg){
 	
 	MSGQUEUE_OBJ_RGB msg2;
-	uint8_t cnt = 255;
+	uint8_t cnt = 0;
 	
 	Init_Th_rgb();
 	while(1){
-		osDelay(10U);
-		if(cnt <100)
+		osDelay(50U);
+		if(cnt <15)
 			cnt++;
 		else
 			cnt = 0;
