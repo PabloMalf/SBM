@@ -1,7 +1,7 @@
 #include "vol.h"
 #include "stm32f4xx_hal.h"
 
-#define VOL_REF 99U
+#define VOL_REF 15U
 #define RESOLUTION_12B 4060U //4096U
 
 static osThreadId_t id_Th_vol;
@@ -11,11 +11,10 @@ static MSGQUEUE_OBJ_VOL msg;
 
 void Th_vol(void *argument);
 static void myADC_Init(ADC_HandleTypeDef *hadc);
-static uint8_t myADC_Get_Voltage(ADC_HandleTypeDef *hadc);
+static float myADC_Get_Voltage(ADC_HandleTypeDef *hadc);
 
-/*TEST*/
 static osThreadId_t id_Th_vol_test;
-void Th_vol_test(void *argument);
+static void Th_vol_test(void *argument);
 
 osThreadId_t get_id_Th_vol(void){
 	return id_Th_vol;
@@ -37,18 +36,6 @@ int Init_Th_vol(void){
   if(id_Th_vol == NULL)
     return(-1);
   return(0);
-}
-
-void Th_vol(void *argument){
-	static ADC_HandleTypeDef hadc = {0};
-	
-	Init_MsgQueue_vol();
-	myADC_Init(&hadc);
-	
-	while(1){
-		msg.voltage_level = myADC_Get_Voltage(&hadc);
-		osMessageQueuePut(id_MsgQueue_vol, &msg, 0U, 0U);
-	}
 }
 
 static void myADC_Init(ADC_HandleTypeDef *hadc){
@@ -80,15 +67,14 @@ static void myADC_Init(ADC_HandleTypeDef *hadc){
 	
 	sadc.Channel = 10;
 	sadc.Rank = 1;
-	sadc.Offset = 
 	sadc.SamplingTime = ADC_SAMPLETIME_3CYCLES;
 	HAL_ADC_ConfigChannel(hadc, &sadc);
 }
 
-static uint8_t myADC_Get_Voltage(ADC_HandleTypeDef *hadc){
-	static HAL_StatusTypeDef status = {0};
+static float myADC_Get_Voltage(ADC_HandleTypeDef *hadc){
+	static HAL_StatusTypeDef status;
 	static uint32_t raw_voltage; 
-	float voltage;
+	uint8_t voltage;
 	
 	HAL_ADC_Start(hadc);
 	
@@ -104,9 +90,26 @@ static uint8_t myADC_Get_Voltage(ADC_HandleTypeDef *hadc){
 	return voltage;
 }
 
+static void Th_vol(void *argument){
+	static ADC_HandleTypeDef hadc = {0};
+	static uint8_t voltage, prev_voltage = 0;
+	
+	Init_MsgQueue_vol();
+	myADC_Init(&hadc);
+	
+	while(1){
+		voltage = myADC_Get_Voltage(&hadc);
+		if(prev_voltage != voltage){
+			msg.voltage_level = voltage;
+			osMessageQueuePut(id_MsgQueue_vol, &msg, 0U, 0U);
+			prev_voltage = voltage;
+		}
+	}
+}
+
 /*TEST*/
 static void myInit_led(void){
-	static GPIO_InitTypeDef sgpio = {0};
+	static GPIO_InitTypeDef sgpio;
 	
 	__HAL_RCC_GPIOB_CLK_ENABLE();
 	sgpio.Pin = GPIO_PIN_0 | GPIO_PIN_7 | GPIO_PIN_14;
@@ -130,11 +133,10 @@ static void Th_vol_test(void *argument){
 	myInit_led();
 	
 	while(1){
-		osDelay(50U);
-		if(osOK == osMessageQueueGet(id_MsgQueue_vol, &msg2, NULL, 0U)){
-			msg2.voltage_level<25 ? HAL_GPIO_WritePin(GPIOB, GPIO_PIN_0, GPIO_PIN_RESET) : HAL_GPIO_WritePin(GPIOB, GPIO_PIN_0, GPIO_PIN_SET);
-			msg2.voltage_level<50 ? HAL_GPIO_WritePin(GPIOB, GPIO_PIN_7, GPIO_PIN_RESET) : HAL_GPIO_WritePin(GPIOB, GPIO_PIN_7, GPIO_PIN_SET);
-			msg2.voltage_level<75 ? HAL_GPIO_WritePin(GPIOB, GPIO_PIN_14, GPIO_PIN_RESET) : HAL_GPIO_WritePin(GPIOB, GPIO_PIN_14, GPIO_PIN_SET);
+		if(osOK == osMessageQueueGet(id_MsgQueue_vol, &msg2, NULL, osWaitForever)){
+			HAL_GPIO_WritePin(GPIOB, GPIO_PIN_0,  (msg2.voltage_level < 4 ? GPIO_PIN_RESET : GPIO_PIN_SET));
+			HAL_GPIO_WritePin(GPIOB, GPIO_PIN_7,  (msg2.voltage_level < 8 ? GPIO_PIN_RESET : GPIO_PIN_SET));
+			HAL_GPIO_WritePin(GPIOB, GPIO_PIN_14, (msg2.voltage_level < 12 ? GPIO_PIN_RESET : GPIO_PIN_SET));
 		}
 	}
 }
