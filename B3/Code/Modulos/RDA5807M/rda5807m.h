@@ -60,7 +60,6 @@ typedef struct{
 int Init_Th_rda(void);
 int Init_Th_rda_test(void);
 
-osThreadId_t get_id_Th_rda(void);
 osMessageQueueId_t get_id_MsgQueue_rda_mosi(void);
 osMessageQueueId_t get_id_MsgQueue_rda_miso(void);
 

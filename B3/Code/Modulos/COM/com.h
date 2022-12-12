@@ -15,7 +15,6 @@ typedef struct {
 } MSGQUEUE_OBJ_COM;
 
 int Init_Th_com(void);
-osThreadId_t get_id_Th_com(void);
 osMessageQueueId_t get_id_MsgQueue_com(void);
 
 /*TEST*/

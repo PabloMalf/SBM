@@ -48,14 +48,6 @@ static void set_freq		(reg_rda_t*, uint16_t);
 static void Th_rda(void *argument);
 static void Th_rda_test(void *argument);
 
-osThreadId_t get_id_Th_rda(void){
-	return id_Th_rda;
-}
-
-osThreadId_t get_id_Th_rda_test(void){
-	return id_Th_rda_test;
-}
-
 osMessageQueueId_t get_id_MsgQueue_rda_miso(void){
 	return id_MsgQueue_rda_mosi;
 }
@@ -271,8 +263,14 @@ static void Th_rda_test(void *argument){
 	static MSGQUEUE_OBJ_RDA_MOSI msg_mosi;
 	static MSGQUEUE_OBJ_RDA_MISO msg_miso;
 	static uint16_t freq;
+	static int i;
 	
 	Init_Th_rda();
+	
+	msg_mosi.comando = cmd_set_vol;
+	msg_mosi.data = 0;
+	osMessageQueuePut(id_MsgQueue_rda_mosi, &msg_mosi, NULL, 0U);
+	osDelay(500);
 	
 	msg_mosi.comando = cmd_power_on;
 	osMessageQueuePut(id_MsgQueue_rda_mosi, &msg_mosi, NULL, 0U);
@@ -284,6 +282,21 @@ static void Th_rda_test(void *argument){
 	
 	msg_mosi.comando = cmd_set_freq;
 	msg_mosi.data = 980;
+	osMessageQueuePut(id_MsgQueue_rda_mosi, &msg_mosi, NULL, 0U);
+	osDelay(5000);
+	
+	for(i = 0; i < 15; i++){
+		msg_mosi.comando = cmd_set_vol;
+		msg_mosi.data = i;
+		osMessageQueuePut(id_MsgQueue_rda_mosi, &msg_mosi, NULL, 0U);
+		osDelay(500);
+	}
+	
+	msg_mosi.comando = cmd_seek_up;
+	osMessageQueuePut(id_MsgQueue_rda_mosi, &msg_mosi, NULL, 0U);
+	osDelay(5000);
+	
+	msg_mosi.comando = cmd_seek_down;
 	osMessageQueuePut(id_MsgQueue_rda_mosi, &msg_mosi, NULL, 0U);
 	osDelay(5000);
 	

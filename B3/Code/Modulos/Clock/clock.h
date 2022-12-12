@@ -7,7 +7,6 @@ extern uint32_t sec;
 
 int Init_Th_clock(void);
 int Init_Th_clock_test(void);
-osThreadId_t get_id_Th_clock(void);
 
 void set_clock(uint8_t hour, uint8_t minutes, uint8_t seconds);
 void multiple_to_sec(uint32_t* sec, uint8_t  hour, uint8_t  minutes, uint8_t  seconds);

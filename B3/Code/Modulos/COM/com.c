@@ -23,9 +23,6 @@ static void myUART_Update_CMD(MSGQUEUE_OBJ_COM msg);
 static osThreadId_t id_Th_com_test;
 void Th_com_test(void*arg);
 
-osThreadId_t get_id_Th_com(void){
-	return id_Th_com;
-}
 osMessageQueueId_t get_id_MsgQueue_com(void){
 	return id_MsgQueue_com;
 }

@@ -11,7 +11,7 @@ typedef struct {
 
 int Init_Th_temp(void);
 int Init_Th_temp_test(void);
-osThreadId_t get_id_Th_temp(void);
+
 osMessageQueueId_t get_id_MsgQueue_temp(void);
 
 #endif

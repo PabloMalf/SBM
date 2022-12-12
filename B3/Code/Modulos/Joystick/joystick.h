@@ -19,7 +19,6 @@ typedef struct {
 
 int Init_Th_joystick(void);
 int Init_Th_joystick_test(void);
-osThreadId_t get_id_Th_joystick(void);
 osMessageQueueId_t get_id_MsgQueue_joystick(void);
 
 #endif

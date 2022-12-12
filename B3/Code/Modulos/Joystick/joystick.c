@@ -23,10 +23,6 @@ static void conf_pins(void);
 static uint8_t check_pins(void);
 static void led_init(void);
 
-osThreadId_t get_id_Th_joystickstick(void){
-	return id_Th_joystick;
-}
-
 osMessageQueueId_t get_id_MsgQueue_joystick(void){
 	return id_MsgQueue_joystick;
 }

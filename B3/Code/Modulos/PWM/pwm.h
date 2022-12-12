@@ -6,9 +6,8 @@
 #define FLAG_SPK 0x01U
 
 osThreadId_t get_id_Th_pwm(void);
-int Init_Th_pwm(void);
 
-/*TEST*/
+int Init_Th_pwm(void);
 int Init_Th_pwm_test(void);
 
 #endif

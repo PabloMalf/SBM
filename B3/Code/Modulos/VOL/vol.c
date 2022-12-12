@@ -16,10 +16,6 @@ static float myADC_Get_Voltage(ADC_HandleTypeDef *hadc);
 static osThreadId_t id_Th_vol_test;
 static void Th_vol_test(void *argument);
 
-osThreadId_t get_id_Th_vol(void){
-	return id_Th_vol;
-}
-
 osMessageQueueId_t get_id_MsgQueue_vol(void){
 	return id_MsgQueue_vol;
 }
@@ -100,7 +96,7 @@ static void Th_vol(void *argument){
 	while(1){
 		voltage = myADC_Get_Voltage(&hadc);
 		if(prev_voltage != voltage){
-			msg.voltage_level = voltage;
+			msg.volume_lvl = voltage;
 			osMessageQueuePut(id_MsgQueue_vol, &msg, 0U, 0U);
 			prev_voltage = voltage;
 		}

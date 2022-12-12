@@ -13,7 +13,6 @@ typedef struct {
 int Init_Th_lcd(void);
 int Init_Th_lcd_test(void);
 
-osThreadId_t get_id_Th_lcd(void);
 osMessageQueueId_t get_id_MsgQueue_lcd(void);
 
 #endif

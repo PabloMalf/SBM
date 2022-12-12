@@ -32,10 +32,6 @@ static void delay(uint32_t n_microsegundos);
 static void symbolToLocalBuffer_L1(uint8_t symbol);
 static void symbolToLocalBuffer_L2(uint8_t symbol);
 
-osThreadId_t get_id_Th_lcd(void){
-	return id_Th_lcd;
-}
-
 osMessageQueueId_t get_id_MsgQueue_lcd(void){
 	return id_MsgQueue_lcd;
 }

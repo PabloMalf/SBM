@@ -6,10 +6,9 @@
 #define MSGQUEUE_OBJECTS_VOL 4
 
 typedef struct {
-	uint8_t voltage_level;
+	uint8_t volume_lvl; //0-15
 } MSGQUEUE_OBJ_VOL;
 
-osThreadId_t get_id_Th_vol(void);
 osMessageQueueId_t get_id_MsgQueue_vol(void);
 
 int Init_Th_vol(void);
