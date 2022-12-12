@@ -1,7 +1,7 @@
 #include "vol.h"
 #include "stm32f4xx_hal.h"
 
-#define VOL_REF 99U
+#define VOL_REF 15U
 #define RESOLUTION_12B 4060U //4096U
 
 static osThreadId_t id_Th_vol;
@@ -67,13 +67,12 @@ static void myADC_Init(ADC_HandleTypeDef *hadc){
 	
 	sadc.Channel = 10;
 	sadc.Rank = 1;
-	sadc.Offset = 
 	sadc.SamplingTime = ADC_SAMPLETIME_3CYCLES;
 	HAL_ADC_ConfigChannel(hadc, &sadc);
 }
 
 static float myADC_Get_Voltage(ADC_HandleTypeDef *hadc){
-	static HAL_StatusTypeDef status = {0};
+	static HAL_StatusTypeDef status;
 	static uint32_t raw_voltage; 
 	uint8_t voltage;
 	
@@ -135,9 +134,9 @@ static void Th_vol_test(void *argument){
 	
 	while(1){
 		if(osOK == osMessageQueueGet(id_MsgQueue_vol, &msg2, NULL, osWaitForever)){
-			HAL_GPIO_WritePin(GPIOB, GPIO_PIN_0,  (msg2.voltage_level < 25 ? GPIO_PIN_RESET : GPIO_PIN_SET));
-			HAL_GPIO_WritePin(GPIOB, GPIO_PIN_7,  (msg2.voltage_level < 50 ? GPIO_PIN_RESET : GPIO_PIN_SET));
-			HAL_GPIO_WritePin(GPIOB, GPIO_PIN_14, (msg2.voltage_level < 75 ? GPIO_PIN_RESET : GPIO_PIN_SET));
+			HAL_GPIO_WritePin(GPIOB, GPIO_PIN_0,  (msg2.voltage_level < 4 ? GPIO_PIN_RESET : GPIO_PIN_SET));
+			HAL_GPIO_WritePin(GPIOB, GPIO_PIN_7,  (msg2.voltage_level < 8 ? GPIO_PIN_RESET : GPIO_PIN_SET));
+			HAL_GPIO_WritePin(GPIOB, GPIO_PIN_14, (msg2.voltage_level < 12 ? GPIO_PIN_RESET : GPIO_PIN_SET));
 		}
 	}
 }
