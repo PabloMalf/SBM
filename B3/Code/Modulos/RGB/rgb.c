@@ -8,16 +8,11 @@ static osThreadId_t id_Th_rgb;
 static osMessageQueueId_t id_MsgQueue_rgb;
 static osThreadId_t id_Th_rgb_test;
 
-void Th_rgb(void *argument);
+void Th_rgb(void* argument);
+void Th_rgb_test(void* argument);
 static void myPWM_Init(GPIO_InitTypeDef *sgpio, TIM_HandleTypeDef *htim, TIM_OC_InitTypeDef *soc);
 static void myPWM_New_Pulse(TIM_HandleTypeDef htim, TIM_OC_InitTypeDef soc, MSGQUEUE_OBJ_RGB msg);
 
-/*TEST*/
-void Th_rgb_test(void*arg);
-
-osThreadId_t get_id_Th_rgb(void){
-	return id_Th_rgb;
-}
 
 osMessageQueueId_t get_id_MsgQueue_rgb(void){
 	return id_MsgQueue_rgb;
@@ -67,7 +62,6 @@ static void myPWM_New_Pulse(TIM_HandleTypeDef htim, TIM_OC_InitTypeDef soc, MSGQ
 }
 
 static void myPWM_Init(GPIO_InitTypeDef *sgpio, TIM_HandleTypeDef *htim, TIM_OC_InitTypeDef *soc){
-	
 	/*TIM4 CHA1*/
 	__HAL_RCC_GPIOD_CLK_ENABLE();
 	sgpio->Pin = GPIO_PIN_12;
@@ -107,7 +101,7 @@ void Th_rgb_test(void*arg){
 	Init_Th_rgb();
 	while(1){
 		osDelay(50U);
-		if(cnt <15)
+		if(cnt < 15)
 			cnt++;
 		else
 			cnt = 0;

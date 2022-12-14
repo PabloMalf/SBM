@@ -130,9 +130,9 @@ static void Th_vol_test(void *argument){
 	
 	while(1){
 		if(osOK == osMessageQueueGet(id_MsgQueue_vol, &msg2, NULL, osWaitForever)){
-			HAL_GPIO_WritePin(GPIOB, GPIO_PIN_0,  (msg2.voltage_level < 4 ? GPIO_PIN_RESET : GPIO_PIN_SET));
-			HAL_GPIO_WritePin(GPIOB, GPIO_PIN_7,  (msg2.voltage_level < 8 ? GPIO_PIN_RESET : GPIO_PIN_SET));
-			HAL_GPIO_WritePin(GPIOB, GPIO_PIN_14, (msg2.voltage_level < 12 ? GPIO_PIN_RESET : GPIO_PIN_SET));
+			HAL_GPIO_WritePin(GPIOB, GPIO_PIN_0,  (msg2.volume_lvl < 4 ? GPIO_PIN_RESET : GPIO_PIN_SET));
+			HAL_GPIO_WritePin(GPIOB, GPIO_PIN_7,  (msg2.volume_lvl < 8 ? GPIO_PIN_RESET : GPIO_PIN_SET));
+			HAL_GPIO_WritePin(GPIOB, GPIO_PIN_14, (msg2.volume_lvl < 12 ? GPIO_PIN_RESET : GPIO_PIN_SET));
 		}
 	}
 }

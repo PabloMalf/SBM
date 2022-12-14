@@ -49,11 +49,11 @@ static void Th_rda(void *argument);
 static void Th_rda_test(void *argument);
 
 osMessageQueueId_t get_id_MsgQueue_rda_miso(void){
-	return id_MsgQueue_rda_mosi;
+	return id_MsgQueue_rda_miso;
 }
 
 osMessageQueueId_t get_id_MsgQueue_rda_mosi(void){
-	return id_MsgQueue_rda_miso;
+	return id_MsgQueue_rda_mosi;
 }
 
 static int Init_MsgQueue_rda_miso(void){
@@ -116,6 +116,8 @@ static int rda_write(reg_rda_t* reg){
 static int rda_read(reg_rda_t* reg, data_t* data){
 	static uint8_t data_reg[12];
 	static uint32_t flags;
+	static uint32_t a;
+	static double freq;
 	
 	I2Cdrv->MasterReceive(RDA_ADDR_RD, data_reg, 12, false);
 	flags = osThreadFlagsWait(0xFFFF, osFlagsWaitAny, osWaitForever);
@@ -129,8 +131,10 @@ static int rda_read(reg_rda_t* reg, data_t* data){
 	reg->regF_RD = (((reg->regF_RD & data_reg[10]) << 8) | data_reg[11]);
 	
 	
-	data->freq_rssi = reg->regB_RD >> 10; 
+	data->freq_rssi = reg->regB_RD >> 10;
 	data->frequency = ((reg->regA_RD & 0x03FF) + 870);
+	
+	freq = (((reg->regA_RD & 0x03FF) * 100) + 87000);
 	data->freq_rssi = reg->regB_RD >> 9;//NO FUFA
 	return 0;
 }
@@ -204,6 +208,7 @@ static void Th_rda(void *argument){
 	
 	while(1){
 		if(osOK == osMessageQueueGet(id_MsgQueue_rda_mosi, &msg_mosi, NULL, 0U)){
+			osMessageQueueReset(id_MsgQueue_rda_miso);
 			switch(msg_mosi.comando){
 				case cmd_power_on:
 					power_on(&reg);
@@ -239,13 +244,14 @@ static void Th_rda(void *argument){
 				break;
 				
 				case cmd_get_info:
-					rda_read(&reg, &data);
-					msg_miso.volume    = data.volume;
-					msg_miso.frequency = data.frequency;
-					msg_miso.freq_rssi = data.freq_rssi;
-					osMessageQueuePut(id_MsgQueue_rda_miso, &msg_miso, NULL, 0U);
+					
 				break;
 			}
+			rda_read(&reg, &data);
+			msg_miso.volume    = data.volume;
+			msg_miso.frequency = data.frequency;
+			msg_miso.freq_rssi = data.freq_rssi;
+			osMessageQueuePut(id_MsgQueue_rda_miso, &msg_miso, NULL, 0U);
 		}
 		osThreadYield();
 	}
@@ -262,6 +268,7 @@ int Init_Th_rda_test(void){
 static void Th_rda_test(void *argument){
 	static MSGQUEUE_OBJ_RDA_MOSI msg_mosi;
 	static MSGQUEUE_OBJ_RDA_MISO msg_miso;
+	
 	static uint16_t freq;
 	static int i;
 	
@@ -276,10 +283,6 @@ static void Th_rda_test(void *argument){
 	osMessageQueuePut(id_MsgQueue_rda_mosi, &msg_mosi, NULL, 0U);
 	osDelay(500);
 	
-	msg_mosi.comando = cmd_seek_up;
-	osMessageQueuePut(id_MsgQueue_rda_mosi, &msg_mosi, NULL, 0U);
-	osDelay(5000);
-	
 	msg_mosi.comando = cmd_set_freq;
 	msg_mosi.data = 980;
 	osMessageQueuePut(id_MsgQueue_rda_mosi, &msg_mosi, NULL, 0U);
@@ -292,20 +295,10 @@ static void Th_rda_test(void *argument){
 		osDelay(500);
 	}
 	
-	msg_mosi.comando = cmd_seek_up;
-	osMessageQueuePut(id_MsgQueue_rda_mosi, &msg_mosi, NULL, 0U);
-	osDelay(5000);
-	
-	msg_mosi.comando = cmd_seek_down;
-	osMessageQueuePut(id_MsgQueue_rda_mosi, &msg_mosi, NULL, 0U);
-	osDelay(5000);
-	
 	msg_mosi.comando = cmd_get_info;
 	osMessageQueuePut(id_MsgQueue_rda_mosi, &msg_mosi, NULL, 0U);
 	osMessageQueueGet(id_MsgQueue_rda_miso, &msg_miso, NULL, osWaitForever);
 	freq = msg_miso.frequency;
 	
-	while(1){
-
-	}
+	while(1){}
 }

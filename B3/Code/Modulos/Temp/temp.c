@@ -55,14 +55,21 @@ void Th_temp(void *argument) {
 	
 	temp_reset();
 
+	I2Cdrv->MasterTransmit(I2C_ADDR, &cmd , 2, true);
+	osThreadFlagsWait(FLAG_CALLBACK_I2C, osFlagsWaitAll, osWaitForever);
+	I2Cdrv->MasterReceive(I2C_ADDR, buf_temp, 2, false);
+	osThreadFlagsWait(FLAG_CALLBACK_I2C, osFlagsWaitAll, osWaitForever);
+	msg.temperature = (((buf_temp[0] << 8) | buf_temp[1]) >> 5) * 0.125;
+	osMessageQueuePut(id_MsgQueue_temp, &msg, 0U, 0U);
+	
 	while(1){
-		osDelay(1000);
 		I2Cdrv->MasterTransmit(I2C_ADDR, &cmd , 2, true);
 		osThreadFlagsWait(FLAG_CALLBACK_I2C, osFlagsWaitAll, osWaitForever);
 		I2Cdrv->MasterReceive(I2C_ADDR, buf_temp, 2, false);
 		osThreadFlagsWait(FLAG_CALLBACK_I2C, osFlagsWaitAll, osWaitForever);
 		msg.temperature = (((buf_temp[0] << 8) | buf_temp[1]) >> 5) * 0.125;
 		osMessageQueuePut(id_MsgQueue_temp, &msg, 0U, 0U);
+		osDelay(1000);
 	}
 }
 

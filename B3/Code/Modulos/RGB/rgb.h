@@ -10,10 +10,7 @@ typedef struct {
 } MSGQUEUE_OBJ_RGB;
 
 int Init_Th_rgb(void);
-osThreadId_t get_id_Th_rgb(void);
-osMessageQueueId_t get_id_MsgQueue_rgb(void);
-
-/*TEST*/
 int Init_Th_rgb_test(void);
+osMessageQueueId_t get_id_MsgQueue_rgb(void);
 
 #endif

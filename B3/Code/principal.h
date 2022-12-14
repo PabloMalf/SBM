@@ -9,6 +9,9 @@
 #include "pwm.h"
 #include "temp.h"
 #include "vol.h"
+#include "rgb.h"
+
+#define BUFFER_SIZE 16
 
 int Init_Th_principal(void);
 
