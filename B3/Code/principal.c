@@ -53,7 +53,7 @@ extern uint32_t sec;
 typedef enum {reposo, manual, memoria, prog_hora} estados_t;
 
 //static int muestreo_hora(uint8_t*, uint8_t*, uint8_t*, uint8_t*);
-static void gestion_vol(void);
+static void gestion_vol(estados_t* estado, MSGQUEUE_OBJ_RDA_MISO* msg_rda_miso);
 
 static osThreadId_t id_Th_principal;
 static void Th_principal(void *argument);
@@ -86,7 +86,7 @@ static void Th_principal(void *argument){
 	static MSGQUEUE_OBJ_VOL msg_vol;
 	
 	while(1){
-		gestion_vol();
+		gestion_vol(&estado, &msg_rda_miso);
 		switch(estado){
 			case reposo:
 				if(prev_sec != sec){
@@ -171,7 +171,7 @@ static void Th_principal(void *argument){
 	}
 }
 
-static void gestion_vol(void){
+static void gestion_vol(estados_t* estado, MSGQUEUE_OBJ_RDA_MISO* msg_rda_miso){
 	static MSGQUEUE_OBJ_VOL msg_vol;
 	static MSGQUEUE_OBJ_RGB msg_rgb;
 	static MSGQUEUE_OBJ_RDA_MOSI msg_rda_mosi;
@@ -182,9 +182,11 @@ static void gestion_vol(void){
 	if(osOK == a){
 		msg_rgb.pulse = msg_vol.volume_lvl;
 		osMessageQueuePut(get_id_MsgQueue_rgb(), &msg_rgb, NULL, 0U);
-		
-		msg_rda_mosi.comando = cmd_set_vol;
-		msg_rda_mosi.data = msg_vol.volume_lvl;
-		osMessageQueuePut(get_id_MsgQueue_rda_mosi(), &msg_rda_mosi, NULL, 0U);
+		if((*estado == memoria) | (*estado == manual)){
+			msg_rda_mosi.comando = cmd_set_vol;
+			msg_rda_mosi.data = msg_vol.volume_lvl;
+			osMessageQueuePut(get_id_MsgQueue_rda_mosi(), &msg_rda_mosi, NULL, 0U);
+			osMessageQueueGet(get_id_MsgQueue_rda_miso(), &msg_rda_miso, NULL, 0U);
+		}
 	}
 }
