@@ -2,58 +2,75 @@
 #include "cmsis_os2.h"
 #include <stdio.h>
 
-/** BUFFER **/
-typedef enum{FALSE = 0, TRUE = 1}bool_t;
+typedef enum {reposo, manual, memori, prog_h} estados_t;
 
 typedef struct{
-	uint16_t frequency;
-	uint8_t  freq_rssi;
-}buffer_data_t;
+	estados_t estado;
+	uint8_t hora, min, seg, prev_sec;
+	MSGQUEUE_OBJ_COM msg_com;
+	MSGQUEUE_OBJ_JOY msg_joy;
+	MSGQUEUE_OBJ_LCD msg_lcd;
+	MSGQUEUE_OBJ_RDA_MOSI msg_rda_mosi;
+	MSGQUEUE_OBJ_RDA_MISO msg_rda_miso;
+	MSGQUEUE_OBJ_TEMP msg_temp;
+	MSGQUEUE_OBJ_VOL msg_vol;
+	MSGQUEUE_OBJ_RGB msg_rgb;
+}info_principal_t;
 
-typedef struct {
-	buffer_data_t* const buffer;
-	uint8_t primer_elemento;
-	uint8_t ultimo_elemento;
-	const uint8_t maxlen;
-}circ_bbuf_t;
+/** BUFFER **/
+//typedef enum{FALSE = 0, TRUE = 1}bool_t;
 
-int buf_in(circ_bbuf_t* buf, buffer_data_t data){
-	static uint8_t next_elemento;
+//typedef struct{
+//	uint16_t frequency;
+//	uint8_t  freq_rssi;
+//}buffer_data_t;
 
-	next_elemento = buf->primer_elemento + 1;
+//typedef struct {
+//	buffer_data_t* const buffer;
+//	uint8_t primer_elemento;
+//	uint8_t ultimo_elemento;
+//	const uint8_t maxlen;
+//}circ_bbuf_t;
 
-	if(next_elemento >= buf->maxlen){
-		next_elemento = 0;
-	}
-	if(next_elemento == buf->ultimo_elemento){
-		return -1;
-	}
-	buf->buffer[buf->primer_elemento] = data;
-	buf->primer_elemento = next_elemento;
-	return 0;
-}
+//int buf_in(circ_bbuf_t* buf, buffer_data_t data){
+//	static uint8_t next_elemento;
 
-int buf_out(circ_bbuf_t* buf, buffer_data_t* data){
-	static uint8_t next_elemento;
+//	next_elemento = buf->primer_elemento + 1;
 
-	if(buf->primer_elemento == buf->ultimo_elemento){
-		return -1;
-	}
-	next_elemento = buf->ultimo_elemento + 1;
-	if(next_elemento >= buf->maxlen){
-		next_elemento = 0;
-	}
-	*data = buf->buffer[buf->ultimo_elemento];
-	buf->ultimo_elemento = next_elemento;
-	return 0;
-}
+//	if(next_elemento >= buf->maxlen){
+//		next_elemento = 0;
+//	}
+//	if(next_elemento == buf->ultimo_elemento){
+//		return -1;
+//	}
+//	buf->buffer[buf->primer_elemento] = data;
+//	buf->primer_elemento = next_elemento;
+//	return 0;
+//}
+
+//int buf_out(circ_bbuf_t* buf, buffer_data_t* data){
+//	static uint8_t next_elemento;
+
+//	if(buf->primer_elemento == buf->ultimo_elemento){
+//		return -1;
+//	}
+//	next_elemento = buf->ultimo_elemento + 1;
+//	if(next_elemento >= buf->maxlen){
+//		next_elemento = 0;
+//	}
+//	*data = buf->buffer[buf->ultimo_elemento];
+//	buf->ultimo_elemento = next_elemento;
+//	return 0;
+//}
 
 extern uint32_t sec;
 
-typedef enum {reposo, manual, memoria, prog_hora} estados_t;
+static void gestion_vol(info_principal_t* i);
+static void f_reposo(info_principal_t* i);
+static void f_manual(info_principal_t* i);
+static void f_memori(info_principal_t* i);
+static void f_prog_h(info_principal_t* i);
 
-//static int muestreo_hora(uint8_t*, uint8_t*, uint8_t*, uint8_t*);
-static void gestion_vol(estados_t* estado, MSGQUEUE_OBJ_RDA_MISO* msg_rda_miso);
 
 static osThreadId_t id_Th_principal;
 static void Th_principal(void *argument);
@@ -74,119 +91,118 @@ int Init_Th_principal(void){
 }
 
 static void Th_principal(void *argument){
-	static estados_t estado = reposo;
-	static uint8_t hora, min, seg, prev_sec = 1;
-	
-	static MSGQUEUE_OBJ_COM msg_com;
-	static MSGQUEUE_OBJ_JOY msg_joy;
-	static MSGQUEUE_OBJ_LCD msg_lcd;
-	static MSGQUEUE_OBJ_RDA_MOSI msg_rda_mosi;
-	static MSGQUEUE_OBJ_RDA_MISO msg_rda_miso;
-	static MSGQUEUE_OBJ_TEMP msg_temp;
-	static MSGQUEUE_OBJ_VOL msg_vol;
+	static info_principal_t info;
+	info.estado = reposo;
+	info.prev_sec = 79; //Numero aleatorio para que no sea igual al estado inicial del reloj
 	
 	while(1){
-		gestion_vol(&estado, &msg_rda_miso);
-		switch(estado){
+		gestion_vol(&info);
+		switch(info.estado){
 			case reposo:
-				if(prev_sec != sec){
-					prev_sec = sec;
-					sec_to_multiple(sec, &hora, &min, &seg);
-					
-					osMessageQueueGet(get_id_MsgQueue_temp(), &msg_temp, NULL, osWaitForever);
-					sprintf(msg_lcd.data_L1, " SBM 2022  T:%.1fºC", msg_temp.temperature);
-					sprintf(msg_lcd.data_L2, "      %.2u:%.2u:%.2u", hora, min, seg);
-					osMessageQueuePut(get_id_MsgQueue_lcd(), &msg_lcd, NULL, 0U);
-				}
-				if(osOK == osMessageQueueGet(get_id_MsgQueue_joystick(), &msg_joy, NULL, 0U)){
-					if((msg_joy.tecla == Centro) && (msg_joy.duracion == Larga)){
-						msg_rda_mosi.comando = cmd_power_on;
-						osMessageQueuePut(get_id_MsgQueue_rda_mosi(), &msg_rda_mosi, NULL, 0U);
-						
-						msg_rda_mosi.comando = cmd_set_freq;
-						msg_rda_mosi.data = 980;
-						osMessageQueuePut(get_id_MsgQueue_rda_mosi(), &msg_rda_mosi, NULL, 0U);
-						osMessageQueueGet(get_id_MsgQueue_rda_miso(), &msg_rda_miso, NULL, osWaitForever);
-						estado = manual;
-					}
-				}
+				f_reposo(&info);
 			break;
 			
 			case manual:
-				if(prev_sec != sec){
-					prev_sec = sec;
-					sec_to_multiple(sec, &hora, &min, &seg);
-					
-					osMessageQueueGet(get_id_MsgQueue_temp(), &msg_temp, NULL, 0U);
-					
-					sprintf(msg_lcd.data_L1, "  %.2u:%.2u:%.2u - T:%.1fºC", hora, min, seg, msg_temp.temperature);
-					sprintf(msg_lcd.data_L2, "    F: %d.%d Vol: %d", (msg_rda_miso.frequency / 10), (msg_rda_miso.frequency % 10), msg_rda_miso.volume);
-					osMessageQueuePut(get_id_MsgQueue_lcd(), &msg_lcd, NULL, 0U);
-				}
-				if(osOK == osMessageQueueGet(get_id_MsgQueue_joystick(), &msg_joy, NULL, 0U)){
-					if(msg_joy.duracion == Corta){
-						switch (msg_joy.tecla){
-							case Arriba:
-								msg_rda_mosi.comando = cmd_seek_up;
-								osMessageQueuePut(get_id_MsgQueue_rda_mosi(), &msg_rda_mosi, NULL, 0U);
-							break;
-							
-							case Derecha:
-								msg_rda_mosi.comando = cmd_get_info;
-								osMessageQueuePut(get_id_MsgQueue_rda_mosi(), &msg_rda_mosi, NULL, 0U);
-								osMessageQueueGet(get_id_MsgQueue_rda_miso(), &msg_rda_miso, NULL, 0U);
-								//memorizar msg_rda_miso.frequency
-							break;
-							
-							case Abajo:
-								msg_rda_mosi.comando = cmd_set_freq;
-								msg_rda_mosi.data = 980;
-								osMessageQueuePut(get_id_MsgQueue_rda_mosi(), &msg_rda_mosi, NULL, 0U);
-							break;
-							
-							case Izquierda:
-								msg_rda_mosi.comando = cmd_set_freq;
-								msg_rda_mosi.data = 1017;
-								osMessageQueuePut(get_id_MsgQueue_rda_mosi(), &msg_rda_mosi, NULL, 0U);
-							break;
-							
-							case Centro:
-								
-							break;
-						}
-					}
-				}
-				
+				f_manual(&info);
 			break;
 			
-			case memoria:
-				
+			case memori:
+				f_memori(&info);
 			break;
 			
-			case prog_hora:
-				
+			case prog_h:
+				f_prog_h(&info);
 			break;
 		}
 		osThreadYield();
 	}
 }
 
-static void gestion_vol(estados_t* estado, MSGQUEUE_OBJ_RDA_MISO* msg_rda_miso){
-	static MSGQUEUE_OBJ_VOL msg_vol;
-	static MSGQUEUE_OBJ_RGB msg_rgb;
-	static MSGQUEUE_OBJ_RDA_MOSI msg_rda_mosi;
+static void gestion_vol(info_principal_t* i){
 	static osStatus_t a;
 	
-	a = osMessageQueueGet(get_id_MsgQueue_vol(), &msg_vol, NULL, 0U);
+	a = osMessageQueueGet(get_id_MsgQueue_vol(), &i->msg_vol, NULL, 0U);
 	
 	if(osOK == a){
-		msg_rgb.pulse = msg_vol.volume_lvl;
-		osMessageQueuePut(get_id_MsgQueue_rgb(), &msg_rgb, NULL, 0U);
-		if((*estado == memoria) | (*estado == manual)){
-			msg_rda_mosi.comando = cmd_set_vol;
-			msg_rda_mosi.data = msg_vol.volume_lvl;
-			osMessageQueuePut(get_id_MsgQueue_rda_mosi(), &msg_rda_mosi, NULL, 0U);
-			osMessageQueueGet(get_id_MsgQueue_rda_miso(), &msg_rda_miso, NULL, 0U);
+		i->msg_rgb.pulse = i->msg_vol.volume_lvl;
+		osMessageQueuePut(get_id_MsgQueue_rgb(), &i->msg_rgb, NULL, 0U);
+		if((i->estado == memori) | (i->estado == manual)){
+			i->msg_rda_mosi.comando = cmd_set_vol;
+			i->msg_rda_mosi.data = i->msg_vol.volume_lvl;
+			osMessageQueuePut(get_id_MsgQueue_rda_mosi(), &i->msg_rda_mosi, NULL, 0U);
+			osMessageQueueGet(get_id_MsgQueue_rda_miso(), &i->msg_rda_miso, NULL, 0U);
 		}
 	}
 }
+
+static void f_reposo(info_principal_t* i){
+	if(i->prev_sec != sec){
+		i->prev_sec = sec;
+		sec_to_multiple(sec, &i->hora, &i->min, &i->seg);
+		
+		osMessageQueueGet(get_id_MsgQueue_temp(), &i->msg_temp, NULL, osWaitForever);
+		sprintf(i->msg_lcd.data_L1, " SBM 2022  T:%.1fºC", i->msg_temp.temperature);
+		sprintf(i->msg_lcd.data_L2, "      %.2u:%.2u:%.2u", i->hora, i->min, i->seg);
+		osMessageQueuePut(get_id_MsgQueue_lcd(), &i->msg_lcd, NULL, 0U);
+	}
+	if(osOK == osMessageQueueGet(get_id_MsgQueue_joystick(), &i->msg_joy, NULL, 0U)){
+		if((i->msg_joy.tecla == Centro) && (i->msg_joy.duracion == Larga)){
+			i->msg_rda_mosi.comando = cmd_power_on;
+			osMessageQueuePut(get_id_MsgQueue_rda_mosi(), &i->msg_rda_mosi, NULL, 0U);
+			
+			i->msg_rda_mosi.comando = cmd_set_freq;
+			i->msg_rda_mosi.data = 980;
+			osMessageQueuePut(get_id_MsgQueue_rda_mosi(), &i->msg_rda_mosi, NULL, 0U);
+			osMessageQueueGet(get_id_MsgQueue_rda_miso(), &i->msg_rda_miso, NULL, osWaitForever);
+			i->estado = manual;
+		}
+	}
+}
+	
+static void f_manual(info_principal_t* i){
+	if(i->prev_sec != sec){
+		i->prev_sec = sec;
+		sec_to_multiple(sec, &i->hora, &i->min, &i->seg);
+		
+		osMessageQueueGet(get_id_MsgQueue_temp(), &i->msg_temp, NULL, 0U);
+		
+		sprintf(i->msg_lcd.data_L1, "  %.2u:%.2u:%.2u - T:%.1fºC", i->hora, i->min, i->seg, i->msg_temp.temperature);
+		sprintf(i->msg_lcd.data_L2, "    F: %d.%d Vol: %d", (i->msg_rda_miso.frequency / 10), (i->msg_rda_miso.frequency % 10), i->msg_rda_miso.volume);
+		osMessageQueuePut(get_id_MsgQueue_lcd(), &i->msg_lcd, NULL, 0U);
+	}
+	if(osOK == osMessageQueueGet(get_id_MsgQueue_joystick(), &i->msg_joy, NULL, 0U)){
+		if(i->msg_joy.duracion == Corta){
+			switch (i->msg_joy.tecla){
+				case Arriba:
+					i->msg_rda_mosi.comando = cmd_seek_up;
+					osMessageQueuePut(get_id_MsgQueue_rda_mosi(), &i->msg_rda_mosi, NULL, 0U);
+				break;
+				
+				case Derecha:
+					i->msg_rda_mosi.comando = cmd_next100kHz;
+					osMessageQueuePut(get_id_MsgQueue_rda_mosi(), &i->msg_rda_mosi, NULL, 0U);
+				break;
+				
+				case Abajo:
+					i->msg_rda_mosi.comando = cmd_seek_down;
+					osMessageQueuePut(get_id_MsgQueue_rda_mosi(), &i->msg_rda_mosi, NULL, 0U);
+				break;
+				
+				case Izquierda:
+					i->msg_rda_mosi.comando = cmd_prev100kHz;
+					osMessageQueuePut(get_id_MsgQueue_rda_mosi(), &i->msg_rda_mosi, NULL, 0U);
+				break;
+				
+				case Centro:
+					//NADA
+				break;
+			}
+		}
+		else if((i->msg_joy.duracion == Larga) && (i->msg_joy.tecla == Centro)){
+			i->estado = memori;
+		}
+	}	
+}
+
+static void f_memori(info_principal_t* i){}
+static void f_prog_h(info_principal_t* i){}
