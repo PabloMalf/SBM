@@ -55,6 +55,7 @@ typedef struct{
 	uint8_t	 volume;
 	uint8_t  freq_rssi;
 	uint16_t frequency;
+	char bytes_send[12];
 } MSGQUEUE_OBJ_RDA_MISO;
 
 int Init_Th_rda(void);

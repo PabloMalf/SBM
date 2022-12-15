@@ -1,6 +1,7 @@
 #include "rda5807m.h"
 #include "Driver_I2C.h" 
 #include "stm32f4xx_hal.h"
+#include <string.h>
 
 typedef struct{
 	uint16_t reg2_WR;
@@ -33,17 +34,17 @@ static osThreadId_t id_Th_rda_test;
 static osMessageQueueId_t id_MsgQueue_rda_mosi;
 static osMessageQueueId_t id_MsgQueue_rda_miso;
 
-static void rda_init		(reg_rda_t*, data_t*);
-static int rda_write		(reg_rda_t*);
+static void rda_init		(reg_rda_t*, MSGQUEUE_OBJ_RDA_MISO* msg, data_t*);
 static int rda_read			(reg_rda_t*, data_t*);
-static void power_on		(reg_rda_t*);
-static void power_off		(reg_rda_t*);
-static void set_volume	(reg_rda_t*, data_t*);
-static void next_100kHz	(reg_rda_t*, data_t*);
-static void prev_100kHz	(reg_rda_t*, data_t*);
-static void seek_up			(reg_rda_t*);
-static void seek_down		(reg_rda_t*);
-static void set_freq		(reg_rda_t*, uint16_t);
+static int rda_write		(reg_rda_t*, MSGQUEUE_OBJ_RDA_MISO* msg);
+static void power_on		(reg_rda_t*, MSGQUEUE_OBJ_RDA_MISO* msg);
+static void power_off		(reg_rda_t*, MSGQUEUE_OBJ_RDA_MISO* msg);
+static void set_volume	(reg_rda_t*, MSGQUEUE_OBJ_RDA_MISO* msg, data_t*);
+static void next_100kHz	(reg_rda_t*, MSGQUEUE_OBJ_RDA_MISO* msg, data_t*);
+static void prev_100kHz	(reg_rda_t*, MSGQUEUE_OBJ_RDA_MISO* msg, data_t*);
+static void seek_up			(reg_rda_t*, MSGQUEUE_OBJ_RDA_MISO* msg);
+static void seek_down		(reg_rda_t*, MSGQUEUE_OBJ_RDA_MISO* msg);
+static void set_freq		(reg_rda_t*, MSGQUEUE_OBJ_RDA_MISO* msg, uint16_t);
 
 static void Th_rda(void *argument);
 static void Th_rda_test(void *argument);
@@ -74,7 +75,7 @@ static void callback_i2c(uint32_t event){
 	osThreadFlagsSet(id_Th_rda, event);
 }
 
-static void rda_init(reg_rda_t* reg, data_t* data){
+static void rda_init(reg_rda_t* reg, MSGQUEUE_OBJ_RDA_MISO* msg, data_t* data){
 	I2Cdrv-> Initialize   (callback_i2c);
 	I2Cdrv-> PowerControl (ARM_POWER_FULL);
 	I2Cdrv-> Control      (ARM_I2C_BUS_SPEED, ARM_I2C_BUS_SPEED_FAST);
@@ -87,14 +88,14 @@ static void rda_init(reg_rda_t* reg, data_t* data){
 	reg->reg6_WR = (RDA_CONF_OPEN_MODE);
 	reg->reg7_WR = (0x0000);
 	//reg.reg08_WR = (0x0000);
-	rda_write(reg);
+	rda_write(reg, msg);
 	
 	data->volume = RDA_CONF_INIT_VOL;
 }
 
-static int rda_write(reg_rda_t* reg){
+static int rda_write(reg_rda_t* reg, MSGQUEUE_OBJ_RDA_MISO* msg){
 		static uint32_t flags;
-    static uint8_t data_reg[30];
+    static uint8_t data_reg[12];
 		data_reg[0]  = reg->reg2_WR >> 8;
 		data_reg[1]  = reg->reg2_WR & 0x00FF;
 		data_reg[2]  = reg->reg3_WR >> 8;
@@ -107,7 +108,8 @@ static int rda_write(reg_rda_t* reg){
 		data_reg[9]  = reg->reg6_WR & 0x00FF;
 		data_reg[10] = reg->reg7_WR >> 8;
 		data_reg[11] = reg->reg7_WR & 0x00FF;
-		I2Cdrv->MasterTransmit(RDA_ADDR_WR, data_reg, 30, false);
+		memcpy(msg->bytes_send, data_reg, 12);
+		I2Cdrv->MasterTransmit(RDA_ADDR_WR, data_reg, 12, false);
 		flags = osThreadFlagsWait(0xFFFF, osFlagsWaitAny, osWaitForever);
 		if((flags & ARM_I2C_EVENT_TRANSFER_INCOMPLETE) != 0U && (flags & ARM_I2C_EVENT_TRANSFER_DONE) != true)return -1;
 		return 0;
@@ -139,55 +141,55 @@ static int rda_read(reg_rda_t* reg, data_t* data){
 	return 0;
 }
 
-static void power_on(reg_rda_t* reg){
+static void power_on(reg_rda_t* reg, MSGQUEUE_OBJ_RDA_MISO* msg){
 	reg->reg2_WR = reg->reg2_WR | RDA_PWR_ON;
 	reg->reg3_WR = reg->reg3_WR | RDA_TUNE;
-	rda_write(reg);
+	rda_write(reg, msg);
 	reg->reg3_WR = reg->reg3_WR & ~RDA_TUNE;
 }
 
-static void power_off(reg_rda_t* reg){
+static void power_off(reg_rda_t* reg, MSGQUEUE_OBJ_RDA_MISO* msg){
 	reg->reg2_WR = reg->reg2_WR ^ RDA_PWR_ON;
-	rda_write(reg);
+	rda_write(reg, msg);
 }
 
-static void set_volume(reg_rda_t* reg, data_t* data){
+static void set_volume(reg_rda_t* reg, MSGQUEUE_OBJ_RDA_MISO* msg, data_t* data){
 	data->volume = (data->volume > 15) ? 15 : data->volume;
 	reg->reg5_WR= (reg->reg5_WR & 0xFFF0) | data->volume;
-	rda_write(reg);
+	rda_write(reg, msg);
 }
 
-static void next_100kHz(reg_rda_t* reg, data_t* data){
+static void next_100kHz(reg_rda_t* reg, MSGQUEUE_OBJ_RDA_MISO* msg, data_t* data){
 	rda_read(reg, data);
 	uint16_t channel = reg->regA_RD & 0x03FF;
 	channel += (channel == 210) ? 0 : 1;
 	reg->reg3_WR = channel << 6;
-	rda_write(reg);
+	rda_write(reg, msg);
 }
 
-static void prev_100kHz(reg_rda_t* reg, data_t* data){
+static void prev_100kHz(reg_rda_t* reg, MSGQUEUE_OBJ_RDA_MISO* msg, data_t* data){
 	rda_read(reg, data);
 	uint16_t channel = reg->regA_RD & 0x03FF;
 	channel--;
 	reg->reg3_WR = channel << 6;
-	rda_write(reg);
+	rda_write(reg, msg);
 }
 
-static void seek_up(reg_rda_t* reg){
+static void seek_up(reg_rda_t* reg, MSGQUEUE_OBJ_RDA_MISO* msg){
 	reg->reg2_WR = reg->reg2_WR | RDA_SEEK_UP;
-	rda_write(reg);
+	rda_write(reg, msg);
 	reg->reg2_WR = reg->reg2_WR & ~RDA_SEEK_UP;
 }
 
-static void seek_down(reg_rda_t* reg){
+static void seek_down(reg_rda_t* reg, MSGQUEUE_OBJ_RDA_MISO* msg){
 	reg->reg2_WR = reg->reg2_WR | RDA_SEEK_DOWN;
-	rda_write(reg);
+	rda_write(reg, msg);
 	reg->reg2_WR = reg->reg2_WR & ~RDA_SEEK_DOWN;
 }
 
-static void set_freq(reg_rda_t* reg, uint16_t freq){
+static void set_freq(reg_rda_t* reg, MSGQUEUE_OBJ_RDA_MISO* msg, uint16_t freq){
 	reg->reg3_WR = reg->reg3_WR | RDA_TUNE | ((freq - 870) << 6);
-	rda_write(reg);
+	rda_write(reg, msg);
 	reg->reg3_WR = reg->reg3_WR & ~RDA_TUNE;
 }
 
@@ -204,43 +206,43 @@ static void Th_rda(void *argument){
 	
 	static data_t data;
 	static reg_rda_t reg;
-	rda_init(&reg, &data);
+	rda_init(&reg, &msg_miso, &data);
 	
 	while(1){
 		if(osOK == osMessageQueueGet(id_MsgQueue_rda_mosi, &msg_mosi, NULL, 0U)){
 			osMessageQueueReset(id_MsgQueue_rda_miso);
 			switch(msg_mosi.comando){
 				case cmd_power_on:
-					power_on(&reg);
+					power_on(&reg, &msg_miso);
 				break;
 				
 				case cmd_power_off:
-					power_off(&reg);
+					power_off(&reg, &msg_miso);
 				break;
 				
 				case cmd_seek_up:
-					seek_up(&reg);
+					seek_up(&reg, &msg_miso);
 				break;
 				
 				case cmd_seek_down:
-					seek_down(&reg);
+					seek_down(&reg, &msg_miso);
 				break;
 				
 				case cmd_next100kHz:
-					next_100kHz(&reg, &data);
+					next_100kHz(&reg, &msg_miso, &data);
 				break;
 				
 				case cmd_prev100kHz:
-					prev_100kHz(&reg, &data);
+					prev_100kHz(&reg, &msg_miso, &data);
 				break;
 				
 				case cmd_set_vol:
 					data.volume = msg_mosi.data;
-					set_volume(&reg, &data);
+					set_volume(&reg, &msg_miso, &data);
 				break;
 				
 				case cmd_set_freq:
-					set_freq(&reg, msg_mosi.data);
+					set_freq(&reg, &msg_miso, msg_mosi.data);
 				break;
 				
 				case cmd_get_info:

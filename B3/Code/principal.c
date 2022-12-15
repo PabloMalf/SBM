@@ -86,14 +86,14 @@ static void Th_principal(void *argument){
 	static MSGQUEUE_OBJ_VOL msg_vol;
 	
 	while(1){
-		//gestion_vol();
+		gestion_vol();
 		switch(estado){
 			case reposo:
 				if(prev_sec != sec){
 					prev_sec = sec;
 					sec_to_multiple(sec, &hora, &min, &seg);
 					
-					osMessageQueueGet(get_id_MsgQueue_temp(), &msg_temp, NULL, 0U);
+					osMessageQueueGet(get_id_MsgQueue_temp(), &msg_temp, NULL, osWaitForever);
 					sprintf(msg_lcd.data_L1, " SBM 2022  T:%.1fºC", msg_temp.temperature);
 					sprintf(msg_lcd.data_L2, "      %.2u:%.2u:%.2u", hora, min, seg);
 					osMessageQueuePut(get_id_MsgQueue_lcd(), &msg_lcd, NULL, 0U);
@@ -106,7 +106,6 @@ static void Th_principal(void *argument){
 						msg_rda_mosi.comando = cmd_set_freq;
 						msg_rda_mosi.data = 980;
 						osMessageQueuePut(get_id_MsgQueue_rda_mosi(), &msg_rda_mosi, NULL, 0U);
-						
 						osMessageQueueGet(get_id_MsgQueue_rda_miso(), &msg_rda_miso, NULL, osWaitForever);
 						estado = manual;
 					}
@@ -119,7 +118,6 @@ static void Th_principal(void *argument){
 					sec_to_multiple(sec, &hora, &min, &seg);
 					
 					osMessageQueueGet(get_id_MsgQueue_temp(), &msg_temp, NULL, 0U);
-					osMessageQueueGet(get_id_MsgQueue_rda_miso(), &msg_rda_miso, NULL, 0U);
 					
 					sprintf(msg_lcd.data_L1, "  %.2u:%.2u:%.2u - T:%.1fºC", hora, min, seg, msg_temp.temperature);
 					sprintf(msg_lcd.data_L2, "    F: %d.%d Vol: %d", (msg_rda_miso.frequency / 10), (msg_rda_miso.frequency % 10), msg_rda_miso.volume);
@@ -173,26 +171,20 @@ static void Th_principal(void *argument){
 	}
 }
 
-//static int muestreo_hora(uint8_t* h, uint8_t* m, uint8_t* s, uint8_t* last_sec){
-//	if(last_sec != s){
-//		last_sec = s;
-//		sec_to_multiple(sec, h, m, s);
-//		return(1);
-//	}
-//	return(0);
-//}
-
 static void gestion_vol(void){
-	MSGQUEUE_OBJ_VOL msg_vol;
-	MSGQUEUE_OBJ_RGB msg_rgb;
-	MSGQUEUE_OBJ_RDA_MOSI msg_rda_mosi;
+	static MSGQUEUE_OBJ_VOL msg_vol;
+	static MSGQUEUE_OBJ_RGB msg_rgb;
+	static MSGQUEUE_OBJ_RDA_MOSI msg_rda_mosi;
+	static osStatus_t a;
 	
-	osMessageQueueGet(get_id_MsgQueue_vol(), &msg_vol, NULL, 0U);
+	a = osMessageQueueGet(get_id_MsgQueue_vol(), &msg_vol, NULL, 0U);
 	
-	msg_rgb.pulse = msg_vol.volume_lvl;
-	osMessageQueuePut(get_id_MsgQueue_rgb(), &msg_rgb, NULL, 0U);
-	
-	msg_rda_mosi.comando = cmd_set_vol;
-	msg_rda_mosi.data = msg_vol.volume_lvl;
-	osMessageQueuePut(get_id_MsgQueue_rda_mosi(), &msg_rda_mosi, NULL, 0U);
+	if(osOK == a){
+		msg_rgb.pulse = msg_vol.volume_lvl;
+		osMessageQueuePut(get_id_MsgQueue_rgb(), &msg_rgb, NULL, 0U);
+		
+		msg_rda_mosi.comando = cmd_set_vol;
+		msg_rda_mosi.data = msg_vol.volume_lvl;
+		osMessageQueuePut(get_id_MsgQueue_rda_mosi(), &msg_rda_mosi, NULL, 0U);
+	}
 }

@@ -61,7 +61,7 @@ void Th_temp(void *argument) {
 	osThreadFlagsWait(FLAG_CALLBACK_I2C, osFlagsWaitAll, osWaitForever);
 	msg.temperature = (((buf_temp[0] << 8) | buf_temp[1]) >> 5) * 0.125;
 	osMessageQueuePut(id_MsgQueue_temp, &msg, 0U, 0U);
-	
+
 	while(1){
 		I2Cdrv->MasterTransmit(I2C_ADDR, &cmd , 2, true);
 		osThreadFlagsWait(FLAG_CALLBACK_I2C, osFlagsWaitAll, osWaitForever);
