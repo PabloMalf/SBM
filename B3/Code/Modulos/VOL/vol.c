@@ -11,7 +11,7 @@ static MSGQUEUE_OBJ_VOL msg;
 
 void Th_vol(void *argument);
 static void myADC_Init(ADC_HandleTypeDef *hadc);
-static float myADC_Get_Voltage(ADC_HandleTypeDef *hadc);
+static uint8_t myADC_Get_Voltage(ADC_HandleTypeDef *hadc);
 
 static osThreadId_t id_Th_vol_test;
 static void Th_vol_test(void *argument);
@@ -67,7 +67,7 @@ static void myADC_Init(ADC_HandleTypeDef *hadc){
 	HAL_ADC_ConfigChannel(hadc, &sadc);
 }
 
-static float myADC_Get_Voltage(ADC_HandleTypeDef *hadc){
+static uint8_t myADC_Get_Voltage(ADC_HandleTypeDef *hadc){
 	static HAL_StatusTypeDef status;
 	static uint32_t raw_voltage; 
 	uint8_t voltage;
@@ -100,6 +100,7 @@ static void Th_vol(void *argument){
 			osMessageQueuePut(id_MsgQueue_vol, &msg, 0U, 0U);
 			prev_voltage = voltage;
 		}
+		osDelay(1000U);
 	}
 }
 
