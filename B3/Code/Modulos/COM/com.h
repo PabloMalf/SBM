@@ -8,10 +8,9 @@
 typedef enum{CMD_RDA, SET_TIME, LCD_to_PC, PC_CNTRL}comPC_t;
 
 typedef struct {
-	comPC_t comPC;
-	char frame_Tx[12];
-	uint32_t frame_time;
-	uint32_t hora;
+	comPC_t comPC; 	// tipo para gestion del update 
+	char frame_Tx[12];	// in: traba de 12bytes de la radio	
+	uint32_t hora;			// in/out 
 } MSGQUEUE_OBJ_COM;
 
 int Init_Th_com(void);
