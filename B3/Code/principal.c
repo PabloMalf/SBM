@@ -94,7 +94,7 @@ static void Th_principal(void *argument){
 	static info_principal_t info;
 	info.estado = reposo;
 	info.prev_sec = 79; //Numero aleatorio para que no sea igual al estado inicial del reloj
-	
+	set_clock(14,56,45);
 	while(1){
 		gestion_vol(&info);
 		switch(info.estado){
@@ -119,18 +119,18 @@ static void Th_principal(void *argument){
 }
 
 static void gestion_vol(info_principal_t* i){
-	static osStatus_t a;
+	static osStatus_t on;
 	
-	a = osMessageQueueGet(get_id_MsgQueue_vol(), &i->msg_vol, NULL, 0U);
+	on = osMessageQueueGet(get_id_MsgQueue_vol(), &i->msg_vol, NULL, 0U);
 	
-	if(osOK == a){
+	if(osOK == on){
 		i->msg_rgb.pulse = i->msg_vol.volume_lvl;
 		osMessageQueuePut(get_id_MsgQueue_rgb(), &i->msg_rgb, NULL, 0U);
 		if((i->estado == memori) | (i->estado == manual)){
 			i->msg_rda_mosi.comando = cmd_set_vol;
 			i->msg_rda_mosi.data = i->msg_vol.volume_lvl;
 			osMessageQueuePut(get_id_MsgQueue_rda_mosi(), &i->msg_rda_mosi, NULL, 0U);
-			osMessageQueueGet(get_id_MsgQueue_rda_miso(), &i->msg_rda_miso, NULL, 0U);
+			osMessageQueueGet(get_id_MsgQueue_rda_miso(), &i->msg_rda_miso, NULL, osWaitForever);
 		}
 	}
 }
@@ -146,9 +146,11 @@ static void f_reposo(info_principal_t* i){
 		osMessageQueuePut(get_id_MsgQueue_lcd(), &i->msg_lcd, NULL, 0U);
 	}
 	if(osOK == osMessageQueueGet(get_id_MsgQueue_joystick(), &i->msg_joy, NULL, 0U)){
+		osThreadFlagsSet(get_id_Th_pwm(), FLAG_SPK);
 		if((i->msg_joy.tecla == Centro) && (i->msg_joy.duracion == Larga)){
 			i->msg_rda_mosi.comando = cmd_power_on;
 			osMessageQueuePut(get_id_MsgQueue_rda_mosi(), &i->msg_rda_mosi, NULL, 0U);
+			osMessageQueueGet(get_id_MsgQueue_rda_miso(), &i->msg_rda_miso, NULL, osWaitForever);
 			
 			i->msg_rda_mosi.comando = cmd_set_freq;
 			i->msg_rda_mosi.data = 980;
@@ -167,10 +169,11 @@ static void f_manual(info_principal_t* i){
 		osMessageQueueGet(get_id_MsgQueue_temp(), &i->msg_temp, NULL, 0U);
 		
 		sprintf(i->msg_lcd.data_L1, "  %.2u:%.2u:%.2u - T:%.1fºC", i->hora, i->min, i->seg, i->msg_temp.temperature);
-		sprintf(i->msg_lcd.data_L2, "    F: %d.%d Vol: %d", (i->msg_rda_miso.frequency / 10), (i->msg_rda_miso.frequency % 10), i->msg_rda_miso.volume);
+		sprintf(i->msg_lcd.data_L2, "    F:%d.%d  Vol:%d", (i->msg_rda_miso.frequency / 10), (i->msg_rda_miso.frequency % 10), i->msg_rda_miso.volume);
 		osMessageQueuePut(get_id_MsgQueue_lcd(), &i->msg_lcd, NULL, 0U);
 	}
 	if(osOK == osMessageQueueGet(get_id_MsgQueue_joystick(), &i->msg_joy, NULL, 0U)){
+		osThreadFlagsSet(get_id_Th_pwm(), FLAG_SPK);
 		if(i->msg_joy.duracion == Corta){
 			switch (i->msg_joy.tecla){
 				case Arriba:
@@ -204,5 +207,195 @@ static void f_manual(info_principal_t* i){
 	}	
 }
 
-static void f_memori(info_principal_t* i){}
-static void f_prog_h(info_principal_t* i){}
+static void f_memori(info_principal_t* i){
+	if(i->prev_sec != sec){
+		i->prev_sec = sec;
+		sec_to_multiple(sec, &i->hora, &i->min, &i->seg);
+		
+		osMessageQueueGet(get_id_MsgQueue_temp(), &i->msg_temp, NULL, 0U);
+		
+		sprintf(i->msg_lcd.data_L1, "  %.2u:%.2u:%.2u - T:%.1fºC", i->hora, i->min, i->seg, i->msg_temp.temperature);
+		sprintf(i->msg_lcd.data_L2, "Mem:%d  F:%d.%d  Vol:%d", 16, (i->msg_rda_miso.frequency / 10), (i->msg_rda_miso.frequency % 10), i->msg_rda_miso.volume);
+		osMessageQueuePut(get_id_MsgQueue_lcd(), &i->msg_lcd, NULL, 0U);
+	}
+	if(osOK == osMessageQueueGet(get_id_MsgQueue_joystick(), &i->msg_joy, NULL, 0U)){
+		osThreadFlagsSet(get_id_Th_pwm(), FLAG_SPK);
+		if(i->msg_joy.duracion == Corta){
+			switch (i->msg_joy.tecla){
+				case Arriba:
+					
+				break;
+				
+				case Derecha:
+				
+				break;
+				
+				case Abajo:
+				
+				break;
+				
+				case Izquierda:
+				
+				break;
+				
+				case Centro:
+					//NADA
+				break;
+			}
+		}
+		else if((i->msg_joy.duracion == Larga) && (i->msg_joy.tecla == Centro)){
+			i->estado = prog_h;
+		}
+	}	
+}
+
+static void f_prog_h(info_principal_t* i){
+	uint8_t salir = 0;
+
+	typedef enum{hor_d, hor_u, min_d, min_u, seg_d, seg_u, bor}selector_t;
+	static selector_t selec;
+	
+	uint8_t on = 0;
+	uint8_t borrado = 0;
+	
+	sec_to_multiple(sec, &i->hora, &i->min, &i->seg);
+	
+	uint8_t d_hor_u = i->seg % 10;
+	uint8_t d_hor_d = i->seg / 10;
+	uint8_t d_min_u = i->seg % 10;
+	uint8_t d_min_d = i->seg / 10;
+	uint8_t d_seg_u = i->seg % 10;
+	uint8_t d_seg_d = i->seg / 10;
+	
+	sprintf(i->msg_lcd.data_L1, "   Programacion Hora");
+	
+	while(i->estado == prog_h){
+		if(osOK == osMessageQueueGet(get_id_MsgQueue_joystick(), &i->msg_joy, NULL, 0U)){
+			osThreadFlagsSet(get_id_Th_pwm(), FLAG_SPK);
+			if((i->msg_joy.duracion == Larga) && (i->msg_joy.tecla == Centro)){
+				set_clock ((d_hor_d * 10 + d_hor_u), (d_min_d * 10 + d_min_u), (d_seg_d * 10 + d_seg_u));
+				if(borrado){
+					//PENDIENTE BORRAR
+				}
+				i->estado = reposo;
+			}
+			if(i->msg_joy.duracion == Corta){
+				switch (i->msg_joy.tecla){
+					case Centro: 
+						//NADA
+					break;
+					
+					case Derecha:
+						selec += (selec < bor) ? 1 : 0;
+					break;
+					
+					case Izquierda:
+						selec -= (selec > hor_d) ? 1 : 0;
+					break;
+					
+					case Arriba: 
+						switch(selec){
+							case hor_d:
+								d_hor_d += (d_hor_d < 2) ? 1 : -d_hor_d; 
+							break;
+							
+							case hor_u:
+								d_hor_u += (d_hor_u < 3) ? 1 : -d_hor_u;
+							break;
+							
+							case min_d:
+								d_min_d += (d_min_d < 5) ? 1 : -d_min_d;
+							break;
+							
+							case min_u:
+								d_min_u += (d_min_u < 9) ? 1 : -d_min_u;
+							break;
+							
+							case seg_d:
+								d_seg_d += (d_min_d < 5) ? 1 : -d_seg_d;
+							break;
+							
+							case seg_u:
+								d_seg_u += (d_seg_u < 9) ? 1 : -d_seg_u;
+							break;
+							
+							case bor:
+								borrado = (borrado) ? 0 : 1;
+							break;
+						}
+					break;
+					
+					case Abajo:
+						switch(selec){
+							case hor_d:
+								d_hor_d -= (d_hor_d > 0) ? 1 : -2; 
+							break;
+							
+							case hor_u:
+								d_hor_u -= (d_hor_u > 0) ? 1 : -3;
+							break;
+							
+							case min_d:
+								d_min_d -= (d_min_d > 0) ? 1 : -5;
+							break;
+							
+							case min_u:
+								d_min_u -= (d_min_u > 0) ? 1 : -9;
+							break;
+							
+							case seg_d:
+								d_seg_d -= (d_min_d > 0) ? 1 : -5;
+							break;
+							
+							case seg_u:
+								d_seg_u -= (d_seg_u > 0) ? 1 : -9;
+							break;
+							
+							case bor:
+								borrado = (borrado) ? 0 : 1;
+							break;
+						}
+					break;
+				}
+			}
+		}
+		if(on){
+			sprintf(i->msg_lcd.data_L2, "     %d%d:%d%d:%d%d - B:%d", d_hor_d, d_hor_u, d_min_d, d_min_u, d_seg_d, d_seg_u, borrado);
+			on = 0;
+		}
+		else{
+			switch(selec){
+				case hor_d:
+					sprintf(i->msg_lcd.data_L2, "      %d:%d%d:%d%d - B:%d", d_hor_u, d_min_d, d_min_u, d_seg_d, d_seg_u, borrado);
+				break;
+				
+				case hor_u:
+					sprintf(i->msg_lcd.data_L2, "     %d :%d%d:%d%d - B:%d", d_hor_d, d_min_d, d_min_u, d_seg_d, d_seg_u, borrado);
+				break;
+				
+				case min_d:
+					sprintf(i->msg_lcd.data_L2, "     %d%d: %d:%d%d - B:%d", d_hor_d, d_hor_u, d_min_u, d_seg_d, d_seg_u, borrado);
+				break;
+				
+				case min_u:
+					sprintf(i->msg_lcd.data_L2, "     %d%d:%d :%d%d - B:%d", d_hor_d, d_hor_u, d_min_d, d_seg_d, d_seg_u, borrado);
+				break;
+				
+				case seg_d:
+					sprintf(i->msg_lcd.data_L2, "     %d%d:%d%d: %d - B:%d", d_hor_d, d_hor_u, d_min_d, d_min_u, d_seg_u, borrado);
+				break;
+				
+				case seg_u:
+					sprintf(i->msg_lcd.data_L2, "     %d%d:%d%d:%d  - B:%d", d_hor_d, d_hor_u, d_min_d, d_min_u, d_seg_d, borrado);
+				break;
+				
+				case bor:
+					sprintf(i->msg_lcd.data_L2, "     %d%d:%d%d:%d%d - B: ", d_hor_d, d_hor_u, d_min_d, d_min_u, d_seg_d, d_seg_u);
+				break;
+			}
+			on = 1;
+		}
+		osMessageQueuePut(get_id_MsgQueue_lcd(), &i->msg_lcd, NULL, 0U);
+		osDelay(500);
+	}
+}

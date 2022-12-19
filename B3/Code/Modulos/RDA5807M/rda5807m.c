@@ -121,6 +121,8 @@ static int rda_read(reg_rda_t* reg, data_t* data){
 	static uint32_t a;
 	static double freq;
 	
+	osDelay(200);
+	
 	I2Cdrv->MasterReceive(RDA_ADDR_RD, data_reg, 12, false);
 	flags = osThreadFlagsWait(0xFFFF, osFlagsWaitAny, osWaitForever);
 	if((flags & ARM_I2C_EVENT_TRANSFER_INCOMPLETE) != 0U && (flags & ARM_I2C_EVENT_TRANSFER_DONE) != true)return -1;
@@ -133,7 +135,6 @@ static int rda_read(reg_rda_t* reg, data_t* data){
 	reg->regF_RD = (((reg->regF_RD & data_reg[10]) << 8) | data_reg[11]);
 	
 	
-	data->freq_rssi = reg->regB_RD >> 10;
 	data->frequency = ((reg->regA_RD & 0x03FF) + 870);
 	
 	freq = (((reg->regA_RD & 0x03FF) * 100) + 87000);
@@ -289,13 +290,6 @@ static void Th_rda_test(void *argument){
 	msg_mosi.data = 980;
 	osMessageQueuePut(id_MsgQueue_rda_mosi, &msg_mosi, NULL, 0U);
 	osDelay(5000);
-	
-	for(i = 0; i < 15; i++){
-		msg_mosi.comando = cmd_set_vol;
-		msg_mosi.data = i;
-		osMessageQueuePut(id_MsgQueue_rda_mosi, &msg_mosi, NULL, 0U);
-		osDelay(500);
-	}
 	
 	msg_mosi.comando = cmd_get_info;
 	osMessageQueuePut(id_MsgQueue_rda_mosi, &msg_mosi, NULL, 0U);
