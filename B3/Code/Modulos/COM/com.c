@@ -65,6 +65,7 @@ static void myUART_Update_Data(MSGQUEUE_OBJ_COM msg){
 			
 			break;
 		case SET_TIME:
+			myUART_Update_CLK(msg);
 			break;
 		
 		case LCD_to_PC:
