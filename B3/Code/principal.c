@@ -142,12 +142,15 @@ static void f_reposo(info_principal_t* i){
 			i->msg_rda_mosi.comando = cmd_power_on;
 			osMessageQueuePut(get_id_MsgQueue_rda_mosi(), &i->msg_rda_mosi, NULL, 0U);
 			osMessageQueueGet(get_id_MsgQueue_rda_miso(), &i->msg_rda_miso, NULL, osWaitForever);
+			
 			i->msg_rda_mosi.comando = cmd_set_vol;
 			i->msg_rda_mosi.data = i->msg_vol.volume_lvl;
 			osMessageQueuePut(get_id_MsgQueue_rda_mosi(), &i->msg_rda_mosi, NULL, 0U);
+			
 			i->msg_rda_mosi.comando = cmd_set_freq;
 			i->msg_rda_mosi.data = 980;
 			osMessageQueuePut(get_id_MsgQueue_rda_mosi(), &i->msg_rda_mosi, NULL, 0U);
+			osMessageQueueGet(get_id_MsgQueue_rda_miso(), &i->msg_rda_miso, NULL, osWaitForever);
 			i->estado = manual;
 		}
 	}
@@ -163,7 +166,7 @@ static void f_manual(info_principal_t* i){
 	}
 	if(i->state_rda == osOK){
 		//MENSAJE COM
-		;
+		; 
 	}
 	if(i->state_vol == osOK){
 		i->msg_rgb.pulse = i->msg_vol.volume_lvl;
