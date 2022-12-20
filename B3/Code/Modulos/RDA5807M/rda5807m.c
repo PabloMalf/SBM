@@ -96,7 +96,7 @@ static void rda_init(reg_rda_t* reg, MSGQUEUE_OBJ_RDA_MISO* msg, data_t* data){
 
 static int rda_write(reg_rda_t* reg, MSGQUEUE_OBJ_RDA_MISO* msg){
 		static uint32_t flags;
-    static uint8_t data_reg[12];
+    static uint8_t data_reg[30];
 		data_reg[0]  = reg->reg2_WR >> 8;
 		data_reg[1]  = reg->reg2_WR & 0x00FF;
 		data_reg[2]  = reg->reg3_WR >> 8;
@@ -109,7 +109,7 @@ static int rda_write(reg_rda_t* reg, MSGQUEUE_OBJ_RDA_MISO* msg){
 		data_reg[9]  = reg->reg6_WR & 0x00FF;
 		data_reg[10] = reg->reg7_WR >> 8;
 		data_reg[11] = reg->reg7_WR & 0x00FF;
-		I2Cdrv->MasterTransmit(RDA_ADDR_WR, data_reg, 12, false);
+		I2Cdrv->MasterTransmit(RDA_ADDR_WR, data_reg, 30, false);
 		flags = osThreadFlagsWait(0xFFFF, osFlagsWaitAny, osWaitForever);
 		if((flags & ARM_I2C_EVENT_TRANSFER_INCOMPLETE) != 0U && (flags & ARM_I2C_EVENT_TRANSFER_DONE) != true)return -1;
 		return 0;
@@ -117,6 +117,7 @@ static int rda_write(reg_rda_t* reg, MSGQUEUE_OBJ_RDA_MISO* msg){
 
 static int rda_read(reg_rda_t* reg){
 	static uint8_t data_reg[30];
+	static uint8_t test;
 	static uint32_t flags;
 	do{
 		I2Cdrv->MasterReceive(RDA_ADDR_RD, data_reg, 12, false);
@@ -124,24 +125,25 @@ static int rda_read(reg_rda_t* reg){
 		if((flags & ARM_I2C_EVENT_TRANSFER_INCOMPLETE) != 0U && (flags & ARM_I2C_EVENT_TRANSFER_DONE) != true){
 			return -1;
 		}
-	}while(!(data_reg[0] & 0x40));
-	reg->regA_RD = (((reg->regA_RD & data_reg[0])  << 8) | data_reg[1]);
-	reg->regB_RD = (((reg->regB_RD & data_reg[2])  << 8) | data_reg[3]);
-	reg->regC_RD = (((reg->regC_RD & data_reg[4])  << 8) | data_reg[5]);
-	reg->regD_RD = (((reg->regD_RD & data_reg[6])  << 8) | data_reg[7]);
-	reg->regE_RD = (((reg->regE_RD & data_reg[8])  << 8) | data_reg[9]);
-	reg->regF_RD = (((reg->regF_RD & data_reg[10]) << 8) | data_reg[11]);
+		test = data_reg[0];
+	}while(!(test & 0x40));
+	
+	reg->regA_RD = (((0x00 | data_reg[0])  << 8) | data_reg[1]);
+	reg->regB_RD = (((0x00 | data_reg[2])  << 8) | data_reg[3]);
+	reg->regC_RD = (((0x00 | data_reg[4])  << 8) | data_reg[5]);
+	reg->regD_RD = (((0x00 | data_reg[6])  << 8) | data_reg[7]);
+	reg->regE_RD = (((0x00 | data_reg[8])  << 8) | data_reg[9]);
+	reg->regF_RD = (((0x00 | data_reg[10]) << 8) | data_reg[11]);
 	return 0;
 }
 
 static void get_info(reg_rda_t* reg, MSGQUEUE_OBJ_RDA_MISO* msg, data_t* data){
 	rda_read(reg);
 	msg->frequency = ((reg->regA_RD & 0x03FF) + 870);
-	msg->freq_rssi = reg->regB_RD >> 10;//NO FUFA
-	
-	//osMessageQueueReset(id_MsgQueue_rda_miso);
+	//f.f = msg->frequency;
+	msg->freq_rssi = reg->regB_RD >> 10;
 	msg->volume = data->volume;
-  osMessageQueuePut(id_MsgQueue_rda_miso, &msg, NULL, 0U);
+	osMessageQueuePut(id_MsgQueue_rda_miso, &msg, NULL, 0U);
 }
 
 static void power_on(reg_rda_t* reg, MSGQUEUE_OBJ_RDA_MISO* msg, data_t* data){
@@ -170,6 +172,18 @@ static void set_freq(reg_rda_t* reg, MSGQUEUE_OBJ_RDA_MISO* msg, data_t* data, u
 	rda_write(reg, msg);
 	reg->reg3_WR = reg->reg3_WR & ~RDA_TUNE;
 	get_info(reg, msg, data);
+//	if (freq < MIN_FREQ) {
+//		freq = MIN_FREQ;
+//	} else if (freq > MAX_FREQ) {
+//		freq = MAX_FREQ;
+//	} 
+//	int Channel;
+//  Channel = (((freq/1000)-875)/0.1)+0.05;
+//  Channel = Channel & 0x03FF;
+//  reg->reg3_WR = Channel*64 + 0x10;  // Channel + TUNE-Bit + Band=00(87-108) + Space=00(100kHz)
+//  rda_write(reg, msg);
+//  reg->reg3_WR = reg->reg3_WR & ~RDA_TUNE;
+//	get_info(reg, msg, data);
 }
 
 static void next_100kHz(reg_rda_t* reg, MSGQUEUE_OBJ_RDA_MISO* msg, data_t* data){
@@ -177,6 +191,11 @@ static void next_100kHz(reg_rda_t* reg, MSGQUEUE_OBJ_RDA_MISO* msg, data_t* data
 	uint16_t freq = ((reg->regA_RD & 0x03FF) + 870);
 	freq += (freq < MAX_FREQ) ? 1 : 0;
 	set_freq(reg, msg, data, freq);
+//	rda_read(reg);
+//	float frec = (((reg->regA_RD & 0x03FF) * 100) + 87000);
+//	frec = frec + 100;
+//	frec = (MAX_FREQ <= frec) ? MAX_FREQ : (frec);
+//	set_freq(reg, msg, data, frec);
 }
 
 static void prev_100kHz(reg_rda_t* reg, MSGQUEUE_OBJ_RDA_MISO* msg, data_t* data){
@@ -184,6 +203,11 @@ static void prev_100kHz(reg_rda_t* reg, MSGQUEUE_OBJ_RDA_MISO* msg, data_t* data
 	uint16_t freq = ((reg->regA_RD & 0x03FF) + 870);
 	freq -= (freq > MIN_FREQ) ? 1 : 0;
 	set_freq(reg, msg, data, freq);
+//	rda_read(reg);
+//	float frec = (((reg->regA_RD & 0x03FF) * 100) + 87000);
+//	frec = frec - 100;
+//	frec = (MIN_FREQ >= frec) ? MIN_FREQ : (frec);
+//	set_freq(reg, msg, data, frec);
 }
 
 static void seek_up(reg_rda_t* reg, MSGQUEUE_OBJ_RDA_MISO* msg, data_t* data){
@@ -216,8 +240,8 @@ static void Th_rda(void *argument){
 	rda_init(&reg, &msg_miso, &data);
 	
 	while(1){
-		if(osOK == osMessageQueueGet(id_MsgQueue_rda_mosi, &msg_mosi, NULL, 0U)){
-			//osMessageQueueReset(id_MsgQueue_rda_miso);
+		if(osOK == osMessageQueueGet(id_MsgQueue_rda_mosi, &msg_mosi, NULL, osWaitForever)){
+			osMessageQueueReset(id_MsgQueue_rda_mosi);
 			switch(msg_mosi.comando){
 				case cmd_power_on:
 					power_on(&reg, &msg_miso, &data);
@@ -257,7 +281,6 @@ static void Th_rda(void *argument){
 				break;
 			}
 		}
-		osThreadYield();
 	}
 }
 
@@ -273,13 +296,10 @@ static void Th_rda_test(void *argument){
 	static MSGQUEUE_OBJ_RDA_MOSI msg_mosi;
 	static MSGQUEUE_OBJ_RDA_MISO msg_miso;
 	
-	static uint16_t freq;
-	static int i;
-	
 	Init_Th_rda();
 	
 	msg_mosi.comando = cmd_set_vol;
-	msg_mosi.data = 0;
+	msg_mosi.data = 10;
 	osMessageQueuePut(id_MsgQueue_rda_mosi, &msg_mosi, NULL, 0U);
 	osDelay(500);
 	
@@ -295,7 +315,6 @@ static void Th_rda_test(void *argument){
 	msg_mosi.comando = cmd_get_info;
 	osMessageQueuePut(id_MsgQueue_rda_mosi, &msg_mosi, NULL, 0U);
 	osMessageQueueGet(id_MsgQueue_rda_miso, &msg_miso, NULL, osWaitForever);
-	freq = msg_miso.frequency;
 	
 	while(1){}
 }

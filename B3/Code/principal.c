@@ -9,8 +9,8 @@ typedef struct{
 	uint8_t hora, min, seg, prev_sec;
 	
 	osStatus_t state_vol;
-	osStatus_t state_rda;
 	osStatus_t state_tem;
+	osStatus_t state_rda_miso;
 	
 	MSGQUEUE_OBJ_COM msg_com;
 	MSGQUEUE_OBJ_JOY msg_joy;
@@ -22,59 +22,12 @@ typedef struct{
 	MSGQUEUE_OBJ_RGB msg_rgb;
 }info_principal_t;
 
-/** BUFFER **/
-//typedef enum{FALSE = 0, TRUE = 1}bool_t;
-
-//typedef struct{
-//	uint16_t frequency;
-//	uint8_t  freq_rssi;
-//}buffer_data_t;
-
-//typedef struct {
-//	buffer_data_t* const buffer;
-//	uint8_t primer_elemento;
-//	uint8_t ultimo_elemento;
-//	const uint8_t maxlen;
-//}circ_bbuf_t;
-
-//int buf_in(circ_bbuf_t* buf, buffer_data_t data){
-//	static uint8_t next_elemento;
-
-//	next_elemento = buf->primer_elemento + 1;
-
-//	if(next_elemento >= buf->maxlen){
-//		next_elemento = 0;
-//	}
-//	if(next_elemento == buf->ultimo_elemento){
-//		return -1;
-//	}
-//	buf->buffer[buf->primer_elemento] = data;
-//	buf->primer_elemento = next_elemento;
-//	return 0;
-//}
-
-//int buf_out(circ_bbuf_t* buf, buffer_data_t* data){
-//	static uint8_t next_elemento;
-
-//	if(buf->primer_elemento == buf->ultimo_elemento){
-//		return -1;
-//	}
-//	next_elemento = buf->ultimo_elemento + 1;
-//	if(next_elemento >= buf->maxlen){
-//		next_elemento = 0;
-//	}
-//	*data = buf->buffer[buf->ultimo_elemento];
-//	buf->ultimo_elemento = next_elemento;
-//	return 0;
-//}
-
 extern uint32_t sec;
 
 static void f_reposo(info_principal_t*);
 static void f_manual(info_principal_t*);
 static void f_memori(info_principal_t*);
 static void f_prog_h(info_principal_t*);
-
 
 static osThreadId_t id_Th_principal;
 static void Th_principal(void *argument);
@@ -98,10 +51,11 @@ static void Th_principal(void *argument){
 	static info_principal_t info;
 	info.estado = reposo;
 	info.prev_sec = 79; //Numero aleatorio para que no sea igual al estado inicial del reloj
+
 	while(1){
 		info.state_vol = osMessageQueueGet(get_id_MsgQueue_vol(), &info.msg_vol, NULL, 0U);
 		info.state_tem = osMessageQueueGet(get_id_MsgQueue_temp(), &info.msg_temp, NULL, 0U);
-		info.state_rda = osMessageQueueGet(get_id_MsgQueue_rda_miso(), &info.msg_rda_miso, NULL, 0U);
+		info.state_rda_miso = osMessageQueueGet(get_id_MsgQueue_rda_miso(), &info.msg_rda_miso, NULL, 0U);
 		switch(info.estado){
 			case reposo:
 				f_reposo(&info);
@@ -134,6 +88,10 @@ static void f_reposo(info_principal_t* i){
 	if(i->state_vol == osOK){
 		i->msg_rgb.pulse = i->msg_vol.volume_lvl;
 		osMessageQueuePut(get_id_MsgQueue_rgb(), &i->msg_rgb, NULL, 0U);
+		
+		i->msg_rda_mosi.comando = cmd_set_vol;
+		i->msg_rda_mosi.data = i->msg_vol.volume_lvl;
+		osMessageQueuePut(get_id_MsgQueue_rda_mosi(), &i->msg_rda_mosi, NULL, 0U);
 	}
 
 	if(osOK == osMessageQueueGet(get_id_MsgQueue_joystick(), &i->msg_joy, NULL, 0U)){
@@ -141,30 +99,32 @@ static void f_reposo(info_principal_t* i){
 		if((i->msg_joy.tecla == Centro) && (i->msg_joy.duracion == Larga)){
 			i->msg_rda_mosi.comando = cmd_power_on;
 			osMessageQueuePut(get_id_MsgQueue_rda_mosi(), &i->msg_rda_mosi, NULL, 0U);
-			osMessageQueueGet(get_id_MsgQueue_rda_miso(), &i->msg_rda_miso, NULL, osWaitForever);
+			//osMessageQueueGet(get_id_MsgQueue_rda_miso(), &<i->msg_rda_miso, NULL, osWaitForever);
 			
-			i->msg_rda_mosi.comando = cmd_set_vol;
-			i->msg_rda_mosi.data = i->msg_vol.volume_lvl;
-			osMessageQueuePut(get_id_MsgQueue_rda_mosi(), &i->msg_rda_mosi, NULL, 0U);
+//			i->msg_rda_mosi.comando = cmd_set_vol;
+//			i->msg_rda_mosi.data = i->msg_vol.volume_lvl;
+//			osMessageQueuePut(get_id_MsgQueue_rda_mosi(), &i->msg_rda_mosi, NULL, 0U);
+			//osMessageQueueGet(get_id_MsgQueue_rda_miso(), &i->msg_rda_miso, NULL, osWaitForever);
 			
 			i->msg_rda_mosi.comando = cmd_set_freq;
 			i->msg_rda_mosi.data = 980;
 			osMessageQueuePut(get_id_MsgQueue_rda_mosi(), &i->msg_rda_mosi, NULL, 0U);
-			osMessageQueueGet(get_id_MsgQueue_rda_miso(), &i->msg_rda_miso, NULL, osWaitForever);
+			//osStatus_t b= osMessageQueueGet(get_id_MsgQueue_rda_miso(), &i->msg_rda_miso, NULL, osWaitForever);
 			i->estado = manual;
 		}
 	}
 }
-	
+
 static void f_manual(info_principal_t* i){
-	if((i->prev_sec != sec) | (i->state_rda == osOK) | (i->state_vol == osOK)){
+	if((i->prev_sec != sec)  | (i->state_vol == osOK)){
 		i->prev_sec = sec;
 		sec_to_multiple(sec, &i->hora, &i->min, &i->seg);
 		sprintf(i->msg_lcd.data_L1, "  %.2u:%.2u:%.2u - T:%.1fºC", i->hora, i->min, i->seg, i->msg_temp.temperature);
 		sprintf(i->msg_lcd.data_L2, "    F:%d.%d  Vol:%d", (i->msg_rda_miso.frequency / 10), (i->msg_rda_miso.frequency % 10), i->msg_vol.volume_lvl);
+		//sprintf(i->msg_lcd.data_L2, "    F:%.1lf  Vol:%d", i->msg_rda_miso.frequency/1000, i->msg_vol.volume_lvl);
 		osMessageQueuePut(get_id_MsgQueue_lcd(), &i->msg_lcd, NULL, 0U);
 	}
-	if(i->state_rda == osOK){
+	if(i->state_rda_miso == osOK){
 		//MENSAJE COM
 		; 
 	}

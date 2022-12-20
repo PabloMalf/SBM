@@ -9,8 +9,8 @@
 #define RDA_ADDR_WR 0x20 >> 1
 #define RDA_ADDR_RD 0x22 >> 1
 
-#define MIN_FREQ     				875
-#define MAX_FREQ						108
+#define MIN_FREQ     				 870
+#define MAX_FREQ						1080
 
 //Reg2
 #define RDA_CONF_HZ 				0x8000
