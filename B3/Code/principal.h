@@ -12,6 +12,7 @@
 #include "rgb.h"
 
 #define BUFFER_SIZE 16
+#define TO_ERROR  3000 //(ms)
 
 int Init_Th_principal(void);
 

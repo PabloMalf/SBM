@@ -28,7 +28,7 @@ void Th_clock(void *argument){
 }
 
 static void Timer_Callback(void *argument){
-	sec++;
+	sec += (sec < 86399) ? 1 : -sec;
 }
 
 void set_clock (uint8_t hour, uint8_t min, uint8_t seg){

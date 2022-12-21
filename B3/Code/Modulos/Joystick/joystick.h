@@ -6,7 +6,7 @@
 #define MSGQUEUE_OBJECTS_JOY 4
 
 //Tiempo para pulsacion larga (ms multiplo de 50)
-#define PULSACION_TIEMPO 1000
+#define PULSACION_TIEMPO 500
 
 typedef enum {Arriba, Abajo, Izquierda, Derecha, Centro} teclas_t;
 

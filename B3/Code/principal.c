@@ -4,9 +4,18 @@
 
 //PENDIENTE NEXT Y PREV 100K
 
+typedef uint16_t buf_info[BUFFER_SIZE];
+
+typedef struct{
+	buf_info info;
+	uint8_t head;
+	uint8_t size;
+}buffer_t;
+
 typedef enum {reposo, manual, memori, prog_h} estados_t;
 
 typedef struct{
+	buffer_t buf;
 	estados_t estado;
 	uint8_t hora, min, seg, prev_sec;
 	osStatus_t status_temp;
@@ -18,15 +27,16 @@ typedef struct{
 	MSGQUEUE_OBJ_TEMP msg_temp;
 	MSGQUEUE_OBJ_VOL msg_vol;
 	MSGQUEUE_OBJ_RGB msg_rgb;
+	osTimerId_t Tmr_error_rda; //SEGURIDAD POR SI RDA SE DESCONECTA
 }info_principal_t;
 
 extern uint32_t sec;
 
-static void gestion(info_principal_t* i);
-static void f_reposo(info_principal_t* i);
-static void f_manual(info_principal_t* i);
-static void f_memori(info_principal_t* i);
-static void f_prog_h(info_principal_t* i);
+static void gestion (info_principal_t*);
+static void f_reposo(info_principal_t*);
+static void f_manual(info_principal_t*);
+static void f_memori(info_principal_t*);
+static void f_prog_h(info_principal_t*);
 
 static osThreadId_t id_Th_principal;
 static void Th_principal(void *argument);
@@ -50,6 +60,8 @@ static void Th_principal(void *argument){
 	static info_principal_t info;
 	info.estado = reposo;
 	info.prev_sec = 79; //Numero aleatorio para que no sea igual al estado inicial del reloj
+	info.buf.head = 0;
+	info.buf.size = 0;
 	osThreadYield();
 	while(1){
 		gestion(&info);
@@ -73,7 +85,6 @@ static void Th_principal(void *argument){
 		osThreadYield();
 	}
 }
-
 static void gestion(info_principal_t* i){
 	if(osOK == osMessageQueueGet(get_id_MsgQueue_vol(), &i->msg_vol, NULL, osWaitForever)){
 		osMessageQueueGet(get_id_MsgQueue_temp(), &i->msg_temp, NULL, osWaitForever);
@@ -87,12 +98,21 @@ static void gestion(info_principal_t* i){
 	}
 }
 
+//SEGURIDAD POR SI RDA SE DESCONECTA
+static void tmr_error_rda_callback (void* argument) {
+	static MSGQUEUE_OBJ_LCD msg;
+	sprintf(msg.data_L1, "       ERROR");
+	sprintf(msg.data_L2, "   rda mal conectada");
+	osMessageQueuePut(get_id_MsgQueue_lcd(), &msg, NULL, 0U);
+}
+//SEGURIDAD POR SI RDA SE DESCONECTA
+
 static void f_reposo(info_principal_t* i){
 	if((i->prev_sec != sec) | (i->status_temp == osOK)){
 		i->prev_sec = sec;
 		sec_to_multiple(sec, &i->hora, &i->min, &i->seg);
 		sprintf(i->msg_lcd.data_L1, " SBM 2022  T:%.1fºC", i->msg_temp.temperature);
-		sprintf(i->msg_lcd.data_L2, "      %.2u:%.2u:%.2u", i->hora, i->min, i->seg);
+		sprintf(i->msg_lcd.data_L2, "       %.2u:%.2u:%.2u", i->hora, i->min, i->seg);
 		osMessageQueuePut(get_id_MsgQueue_lcd(), &i->msg_lcd, NULL, 0U);
 	}
 	if(osOK == osMessageQueueGet(get_id_MsgQueue_joystick(), &i->msg_joy, NULL, 0U)){
@@ -108,7 +128,12 @@ static void f_reposo(info_principal_t* i){
 			i->msg_rda_mosi.comando = cmd_set_vol;
 			i->msg_rda_mosi.data = i->msg_vol.volume_lvl;
 			osMessageQueuePut(get_id_MsgQueue_rda_mosi(), &i->msg_rda_mosi, NULL, 0U);
+			//SEGURIDAD POR SI RDA SE DESCONECTA
+			i->Tmr_error_rda = osTimerNew(tmr_error_rda_callback, osTimerOnce, (void *)0, NULL);
+			osTimerStart(i->Tmr_error_rda, TO_ERROR);
 			osMessageQueueGet(get_id_MsgQueue_rda_miso(), &i->msg_rda_miso, NULL, osWaitForever);
+			osTimerStop(i->Tmr_error_rda);
+			//SEGURIDAD POR SI RDA SE DESCONECTA
 			i->estado = manual;
 		}
 	}
@@ -119,14 +144,17 @@ static void f_manual(info_principal_t* i){
 		i->prev_sec = sec;
 		sec_to_multiple(sec, &i->hora, &i->min, &i->seg);
 		
-		osMessageQueueGet(get_id_MsgQueue_temp(), &i->msg_temp, NULL, 0U);
-		
 		i->msg_rda_mosi.comando = cmd_get_info;
 		osMessageQueuePut(get_id_MsgQueue_rda_mosi(), &i->msg_rda_mosi, NULL, 0U);
+		//SEGURIDAD POR SI RDA SE DESCONECTA
+		i->Tmr_error_rda = osTimerNew(tmr_error_rda_callback, osTimerOnce, (void *)0, NULL);
+		osTimerStart(i->Tmr_error_rda, TO_ERROR);
 		osMessageQueueGet(get_id_MsgQueue_rda_miso(), &i->msg_rda_miso, NULL, osWaitForever);
+		osTimerStop(i->Tmr_error_rda);
+		//SEGURIDAD POR SI RDA SE DESCONECTA
 		
 		sprintf(i->msg_lcd.data_L1, "  %.2u:%.2u:%.2u - T:%.1fºC", i->hora, i->min, i->seg, i->msg_temp.temperature);
-		sprintf(i->msg_lcd.data_L2, "    F:%d.%d  Vol:%d", (i->msg_rda_miso.frequency / 10), (i->msg_rda_miso.frequency % 10), i->msg_rda_miso.volume);
+		sprintf(i->msg_lcd.data_L2, "    F:%d.%d  Vol:%d%d", (i->msg_rda_miso.frequency / 10), (i->msg_rda_miso.frequency % 10), (i->msg_rda_miso.volume / 10), (i->msg_rda_miso.volume % 10));
 		osMessageQueuePut(get_id_MsgQueue_lcd(), &i->msg_lcd, NULL, 0U);
 	}
 	if(osOK == osMessageQueueGet(get_id_MsgQueue_joystick(), &i->msg_joy, NULL, 0U)){
@@ -169,10 +197,22 @@ static void f_memori(info_principal_t* i){
 		i->prev_sec = sec;
 		sec_to_multiple(sec, &i->hora, &i->min, &i->seg);
 		
-		osMessageQueueGet(get_id_MsgQueue_temp(), &i->msg_temp, NULL, 0U);
+		i->msg_rda_mosi.comando = cmd_get_info;
+		osMessageQueuePut(get_id_MsgQueue_rda_mosi(), &i->msg_rda_mosi, NULL, 0U);
+		//SEGURIDAD POR SI RDA SE DESCONECTA
+		i->Tmr_error_rda = osTimerNew(tmr_error_rda_callback, osTimerOnce, (void *)0, NULL);
+		osTimerStart(i->Tmr_error_rda, TO_ERROR);
+		osMessageQueueGet(get_id_MsgQueue_rda_miso(), &i->msg_rda_miso, NULL, osWaitForever);
+		osTimerStop(i->Tmr_error_rda);
+		//SEGURIDAD POR SI RDA SE DESCONECTA
 		
 		sprintf(i->msg_lcd.data_L1, "  %.2u:%.2u:%.2u - T:%.1fºC", i->hora, i->min, i->seg, i->msg_temp.temperature);
-		sprintf(i->msg_lcd.data_L2, "Mem:%d  F:%d.%d  Vol:%d", 16, (i->msg_rda_miso.frequency / 10), (i->msg_rda_miso.frequency % 10), i->msg_rda_miso.volume);
+		if(i->msg_rda_miso.frequency > 999){
+			sprintf(i->msg_lcd.data_L2, ".M:%d%d/%d%d  F:%d.%d  Vol:%d%d", i->buf.head / 10, i->buf.head % 10, i->buf.size / 10, i->buf.size % 10, (i->msg_rda_miso.frequency / 10), (i->msg_rda_miso.frequency % 10), (i->msg_rda_miso.volume / 10), (i->msg_rda_miso.volume % 10));
+		}
+		else{
+			sprintf(i->msg_lcd.data_L2, ".M:%d%d/%d%d  F: %d.%d  Vol:%d%d", i->buf.head / 10, i->buf.head % 10, i->buf.size / 10, i->buf.size % 10, (i->msg_rda_miso.frequency / 10), (i->msg_rda_miso.frequency % 10), (i->msg_rda_miso.volume / 10), (i->msg_rda_miso.volume % 10));
+		}
 		osMessageQueuePut(get_id_MsgQueue_lcd(), &i->msg_lcd, NULL, 0U);
 	}
 	if(osOK == osMessageQueueGet(get_id_MsgQueue_joystick(), &i->msg_joy, NULL, 0U)){
@@ -180,19 +220,54 @@ static void f_memori(info_principal_t* i){
 		if(i->msg_joy.duracion == Corta){
 			switch (i->msg_joy.tecla){
 				case Arriba:
-					
-				break;
-				
-				case Derecha:
-				
+					i->msg_rda_mosi.comando = cmd_seek_up;
+					osMessageQueuePut(get_id_MsgQueue_rda_mosi(), &i->msg_rda_mosi, NULL, 0U);
 				break;
 				
 				case Abajo:
-				
+					if(i->buf.size == BUFFER_SIZE){
+						i->buf.head = i->buf.size;
+						i->buf.info[i->buf.head] = i->msg_rda_miso.frequency;
+					}
+					else{
+						
+						i->buf.info[i->buf.head] = i->msg_rda_miso.frequency;
+					}
+					i->buf.size += (i->buf.size == BUFFER_SIZE) ? 0 : 1;
+					i->buf.info[i->buf.size] = i->msg_rda_miso.frequency;
+					
+					//i->buf.head += (i->buf.head < i->buf.size) ? 1 : -i->buf.head;
 				break;
 				
-				case Izquierda:
+				case Derecha:
+					i->buf.head += (i->buf.head < i->buf.size) ? 1 : (-i->buf.head + 1);
 				
+					i->msg_rda_mosi.comando = cmd_set_freq;
+					i->msg_rda_mosi.data = i->buf.info[i->buf.head];
+					osMessageQueuePut(get_id_MsgQueue_rda_mosi(), &i->msg_rda_mosi, NULL, 0U);
+					
+					//SEGURIDAD POR SI RDA SE DESCONECTA
+					i->Tmr_error_rda = osTimerNew(tmr_error_rda_callback, osTimerOnce, (void *)0, NULL);
+					osTimerStart(i->Tmr_error_rda, TO_ERROR);
+					osMessageQueueGet(get_id_MsgQueue_rda_miso(), &i->msg_rda_miso, NULL, osWaitForever);
+					osTimerStop(i->Tmr_error_rda);
+					//SEGURIDAD POR SI RDA SE DESCONECTA
+
+				break;
+
+				case Izquierda:
+					i->buf.head -= (i->buf.head > 1) ? 1 : (i->buf.head - i->buf.size);
+				
+					i->msg_rda_mosi.comando = cmd_set_freq;
+					i->msg_rda_mosi.data = i->buf.info[i->buf.head];
+					osMessageQueuePut(get_id_MsgQueue_rda_mosi(), &i->msg_rda_mosi, NULL, 0U);
+					
+					//SEGURIDAD POR SI RDA SE DESCONECTA
+					i->Tmr_error_rda = osTimerNew(tmr_error_rda_callback, osTimerOnce, (void *)0, NULL);
+					osTimerStart(i->Tmr_error_rda, TO_ERROR);
+					osMessageQueueGet(get_id_MsgQueue_rda_miso(), &i->msg_rda_miso, NULL, osWaitForever);
+					osTimerStop(i->Tmr_error_rda);
+					//SEGURIDAD POR SI RDA SE DESCONECTA
 				break;
 				
 				case Centro:
@@ -213,14 +288,12 @@ static void f_prog_h(info_principal_t* i){
 	uint8_t on = 0;
 	uint8_t borrado = 0;
 	
-	sec_to_multiple(sec, &i->hora, &i->min, &i->seg);
-	
-	uint8_t d_hor_u = i->seg % 10;
-	uint8_t d_hor_d = i->seg / 10;
-	uint8_t d_min_u = i->seg % 10;
-	uint8_t d_min_d = i->seg / 10;
-	uint8_t d_seg_u = i->seg % 10;
-	uint8_t d_seg_d = i->seg / 10;
+	uint8_t d_hor_u = i->hora % 10;
+	uint8_t d_hor_d = i->hora / 10;
+	uint8_t d_min_u = i->min  % 10;
+	uint8_t d_min_d = i->min  / 10;
+	uint8_t d_seg_u = i->seg  % 10;
+	uint8_t d_seg_d = i->seg  / 10;
 	
 	sprintf(i->msg_lcd.data_L1, "   Programacion Hora");
 	
@@ -230,17 +303,16 @@ static void f_prog_h(info_principal_t* i){
 			if((i->msg_joy.duracion == Larga) && (i->msg_joy.tecla == Centro)){
 				set_clock ((d_hor_d * 10 + d_hor_u), (d_min_d * 10 + d_min_u), (d_seg_d * 10 + d_seg_u));
 				if(borrado){
-					//PENDIENTE BORRAR
+						i->buf.head = 0;
+						i->buf.size = 0;
 				}
+				i->msg_rda_mosi.comando = cmd_power_off;
+				osMessageQueuePut(get_id_MsgQueue_rda_mosi(), &i->msg_rda_mosi, NULL, 0U);
 				i->estado = reposo;
 			}
 			if(i->msg_joy.duracion == Corta){
-				switch (i->msg_joy.tecla){
-					case Centro: 
-						//NADA
-					break;
-					
-					case Derecha:
+				switch (i->msg_joy.tecla){	
+					case Derecha: case Centro:
 						selec += (selec < bor) ? 1 : 0;
 					break;
 					
