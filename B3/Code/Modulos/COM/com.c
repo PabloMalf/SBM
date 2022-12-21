@@ -10,14 +10,15 @@
 #define FLAG_UART_ERROR			0x04U
 
 static osThreadId_t id_Th_com;
-static osMessageQueueId_t id_MsgQueue_com;
+static osMessageQueueId_t id_MsgQueue_com_miso;
+static osMessageQueueId_t id_MsgQueue_com_mosi;
 
 extern ARM_DRIVER_USART Driver_USART3;
 static ARM_DRIVER_USART *USARTdrv = &Driver_USART3;
 
 void Th_com(void *argument);
 static void myUART_Init(void);
-static void myUART_Callback();
+static void myUART_Callback(uint32_t event);
 static void myUART_Get_Time_Of_Frame(MSGQUEUE_OBJ_COM_MOSI msg_mosi, uint8_t* hour, uint8_t* minutes, uint8_t* seconds);
 static int myUART_Update_CMD(MSGQUEUE_OBJ_COM_MOSI msg_mosi);
 static int myUART_Update_CLK(MSGQUEUE_OBJ_COM_MISO msg_miso);
@@ -26,13 +27,24 @@ static int myUART_Update_CLK(MSGQUEUE_OBJ_COM_MISO msg_miso);
 static osThreadId_t id_Th_com_test;
 void Th_com_test(void*arg);
 
-osMessageQueueId_t get_id_MsgQueue_com(void){
-	return id_MsgQueue_com;
+osMessageQueueId_t get_id_MsgQueue_com_miso(void){
+	return id_MsgQueue_com_miso;
 }
 
-static int Init_MsgQueue_com(void){
-  id_MsgQueue_com = osMessageQueueNew(MSGQUEUE_OBJECTS_COM, sizeof(MSGQUEUE_OBJ_COM_MOSI), NULL);
-  if(id_MsgQueue_com == NULL)
+osMessageQueueId_t get_id_MsgQueue_com_mosi(void){
+	return id_MsgQueue_com_mosi;
+}
+
+static int Init_MsgQueue_com_mosi(void){
+  id_MsgQueue_com_mosi = osMessageQueueNew(MSGQUEUE_OBJECTS_COM, sizeof(MSGQUEUE_OBJ_COM_MOSI), NULL);
+  if(id_MsgQueue_com_mosi == NULL)
+    return (-1); 
+  return(0);
+}
+
+static int Init_MsgQueue_com_miso(void){
+  id_MsgQueue_com_miso = osMessageQueueNew(MSGQUEUE_OBJECTS_COM, sizeof(MSGQUEUE_OBJ_COM_MISO), NULL);
+  if(id_MsgQueue_com_miso == NULL)
     return (-1); 
   return(0);
 }
@@ -48,11 +60,13 @@ static void Th_com(void *argument){
 	static MSGQUEUE_OBJ_COM_MOSI msg_mosi;
 	static MSGQUEUE_OBJ_COM_MISO msg_miso;
 	
-	Init_MsgQueue_com();
+	Init_MsgQueue_com_miso();
+	Init_MsgQueue_com_mosi();
+	
 	myUART_Init();
 
 	while(1){
-		if(osMessageQueueGet(id_MsgQueue_com, &msg_mosi, NULL, 500U) == osOK)
+		if(osMessageQueueGet(id_MsgQueue_com_mosi, &msg_mosi, NULL, 500U) == osOK)
 			myUART_Update_CMD(msg_mosi);
 		else{
 			myUART_Update_CLK(msg_miso);	
@@ -127,7 +141,7 @@ static int myUART_Update_CLK(MSGQUEUE_OBJ_COM_MISO msg_miso){
 		return (-1);
 	
 	msg_miso.hora = ((buffer[0]*3600)+(buffer[2]*60)+buffer[4]); // 0x 1508f = 86159 nueva h 23:55:59
-	osMessageQueuePut(id_MsgQueue_com, &msg_miso, 0U, 0U);
+	osMessageQueuePut(id_MsgQueue_com_miso, &msg_miso, 0U, 0U);
 	return (0);
 }
 
@@ -164,16 +178,12 @@ void Th_com_test(void*arg){
 	while(1){
 
 		if(cnt == 6){
-			msg2.comPC = SET_TIME;
 			HAL_GPIO_TogglePin(GPIOB, GPIO_PIN_7);
-			osMessageQueuePut(id_MsgQueue_com, &msg2, 0U, 0U);
-			osMessageQueueGet(id_MsgQueue_com, &msg2, NULL, osWaitForever);
+			
 		}
 		
-		msg2.comPC = CMD_RDA;
 		cnt%2 == 0 ? memset(msg2.frame_Tx, 0xEE, sizeof(msg2.frame_Tx)) : memset(msg2.frame_Tx, 0xAA, sizeof(msg2.frame_Tx));
 		HAL_GPIO_TogglePin(GPIOB, GPIO_PIN_14);
-		osMessageQueuePut(id_MsgQueue_com, &msg2, 0U, 0U);
 		osDelay(1000U);
 			
 		msg2.hora++;
