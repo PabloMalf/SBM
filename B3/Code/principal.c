@@ -37,6 +37,8 @@ static void f_reposo(info_principal_t*);
 static void f_manual(info_principal_t*);
 static void f_memori(info_principal_t*);
 static void f_prog_h(info_principal_t*);
+static void shift_array(info_principal_t*);
+static void tmr_error_rda_callback (void*);
 
 static osThreadId_t id_Th_principal;
 static void Th_principal(void *argument);
@@ -62,6 +64,7 @@ static void Th_principal(void *argument){
 	info.prev_sec = 79; //Numero aleatorio para que no sea igual al estado inicial del reloj
 	info.buf.head = 0;
 	info.buf.size = 0;
+	info.Tmr_error_rda = osTimerNew(tmr_error_rda_callback, osTimerOnce, (void *)0, NULL);
 	osThreadYield();
 	while(1){
 		gestion(&info);
@@ -129,7 +132,6 @@ static void f_reposo(info_principal_t* i){
 			i->msg_rda_mosi.data = i->msg_vol.volume_lvl;
 			osMessageQueuePut(get_id_MsgQueue_rda_mosi(), &i->msg_rda_mosi, NULL, 0U);
 			//SEGURIDAD POR SI RDA SE DESCONECTA
-			i->Tmr_error_rda = osTimerNew(tmr_error_rda_callback, osTimerOnce, (void *)0, NULL);
 			osTimerStart(i->Tmr_error_rda, TO_ERROR);
 			osMessageQueueGet(get_id_MsgQueue_rda_miso(), &i->msg_rda_miso, NULL, osWaitForever);
 			osTimerStop(i->Tmr_error_rda);
@@ -147,7 +149,6 @@ static void f_manual(info_principal_t* i){
 		i->msg_rda_mosi.comando = cmd_get_info;
 		osMessageQueuePut(get_id_MsgQueue_rda_mosi(), &i->msg_rda_mosi, NULL, 0U);
 		//SEGURIDAD POR SI RDA SE DESCONECTA
-		i->Tmr_error_rda = osTimerNew(tmr_error_rda_callback, osTimerOnce, (void *)0, NULL);
 		osTimerStart(i->Tmr_error_rda, TO_ERROR);
 		osMessageQueueGet(get_id_MsgQueue_rda_miso(), &i->msg_rda_miso, NULL, osWaitForever);
 		osTimerStop(i->Tmr_error_rda);
@@ -192,6 +193,13 @@ static void f_manual(info_principal_t* i){
 	}	
 }
 
+static void shift_array(info_principal_t* i){
+	static int j;
+	for(j = 0; j < ((i->buf.size - 1) - i->buf.head); j++){
+		i->buf.info[i->buf.size - j + 1] = i->buf.info[i->buf.size - j];
+	}
+}
+
 static void f_memori(info_principal_t* i){
 	if(i->prev_sec != sec){
 		i->prev_sec = sec;
@@ -200,7 +208,6 @@ static void f_memori(info_principal_t* i){
 		i->msg_rda_mosi.comando = cmd_get_info;
 		osMessageQueuePut(get_id_MsgQueue_rda_mosi(), &i->msg_rda_mosi, NULL, 0U);
 		//SEGURIDAD POR SI RDA SE DESCONECTA
-		i->Tmr_error_rda = osTimerNew(tmr_error_rda_callback, osTimerOnce, (void *)0, NULL);
 		osTimerStart(i->Tmr_error_rda, TO_ERROR);
 		osMessageQueueGet(get_id_MsgQueue_rda_miso(), &i->msg_rda_miso, NULL, osWaitForever);
 		osTimerStop(i->Tmr_error_rda);
@@ -208,13 +215,24 @@ static void f_memori(info_principal_t* i){
 		
 		sprintf(i->msg_lcd.data_L1, "  %.2u:%.2u:%.2u - T:%.1fºC", i->hora, i->min, i->seg, i->msg_temp.temperature);
 		if(i->msg_rda_miso.frequency > 999){
-			sprintf(i->msg_lcd.data_L2, ".M:%d%d/%d%d  F:%d.%d  Vol:%d%d", i->buf.head / 10, i->buf.head % 10, i->buf.size / 10, i->buf.size % 10, (i->msg_rda_miso.frequency / 10), (i->msg_rda_miso.frequency % 10), (i->msg_rda_miso.volume / 10), (i->msg_rda_miso.volume % 10));
+			if(i->buf.size == 0){
+				sprintf(i->msg_lcd.data_L2, ".M:%d%d/%d%d  F:%d.%d  Vol:%d%d", i->buf.head / 10, i->buf.head % 10, i->buf.size / 10, i->buf.size % 10, (i->msg_rda_miso.frequency / 10), (i->msg_rda_miso.frequency % 10), (i->msg_rda_miso.volume / 10), (i->msg_rda_miso.volume % 10));
+			}
+			else{
+				sprintf(i->msg_lcd.data_L2, ".M:%d%d/%d%d  F:%d.%d  Vol:%d%d", (i->buf.head + 1) / 10, (i->buf.head + 1) % 10, i->buf.size / 10, i->buf.size % 10, (i->msg_rda_miso.frequency / 10), (i->msg_rda_miso.frequency % 10), (i->msg_rda_miso.volume / 10), (i->msg_rda_miso.volume % 10));
+			}
 		}
 		else{
-			sprintf(i->msg_lcd.data_L2, ".M:%d%d/%d%d  F: %d.%d  Vol:%d%d", i->buf.head / 10, i->buf.head % 10, i->buf.size / 10, i->buf.size % 10, (i->msg_rda_miso.frequency / 10), (i->msg_rda_miso.frequency % 10), (i->msg_rda_miso.volume / 10), (i->msg_rda_miso.volume % 10));
+			if(i->buf.size == 0){
+				sprintf(i->msg_lcd.data_L2, ".M:%d%d/%d%d  F: %d.%d  Vol:%d%d", i->buf.head / 10, i->buf.head % 10, i->buf.size / 10, i->buf.size % 10, (i->msg_rda_miso.frequency / 10), (i->msg_rda_miso.frequency % 10), (i->msg_rda_miso.volume / 10), (i->msg_rda_miso.volume % 10));
+			}
+			else{
+				sprintf(i->msg_lcd.data_L2, ".M:%d%d/%d%d  F: %d.%d  Vol:%d%d", (i->buf.head + 1) / 10, (i->buf.head + 1) % 10, i->buf.size / 10, i->buf.size % 10, (i->msg_rda_miso.frequency / 10), (i->msg_rda_miso.frequency % 10), (i->msg_rda_miso.volume / 10), (i->msg_rda_miso.volume % 10));
+			}
 		}
 		osMessageQueuePut(get_id_MsgQueue_lcd(), &i->msg_lcd, NULL, 0U);
 	}
+	
 	if(osOK == osMessageQueueGet(get_id_MsgQueue_joystick(), &i->msg_joy, NULL, 0U)){
 		osThreadFlagsSet(get_id_Th_pwm(), FLAG_SPK);
 		if(i->msg_joy.duracion == Corta){
@@ -225,49 +243,83 @@ static void f_memori(info_principal_t* i){
 				break;
 				
 				case Abajo:
-					if(i->buf.size == BUFFER_SIZE){
-						i->buf.head = i->buf.size;
+					if(i->buf.size == 0){
 						i->buf.info[i->buf.head] = i->msg_rda_miso.frequency;
+						i->buf.size++;
+					}
+					else if(i->buf.size == BUFFER_SIZE){
+						if(i->buf.head == (BUFFER_SIZE - 1)){
+							i->buf.head = 0;
+						}
+						else{
+							i->buf.head++;
+						}
+						i->buf.info[i->buf.head] = i->msg_rda_miso.frequency;
+					}
+					else if(i->buf.head < (i->buf.size - 1)){
+						shift_array(i);
+						i->buf.head++;
+						i->buf.info[i->buf.head] = i->msg_rda_miso.frequency;
+						i->buf.size++;
 					}
 					else{
-						
+						i->buf.head++;
 						i->buf.info[i->buf.head] = i->msg_rda_miso.frequency;
+						i->buf.size++;
 					}
-					i->buf.size += (i->buf.size == BUFFER_SIZE) ? 0 : 1;
-					i->buf.info[i->buf.size] = i->msg_rda_miso.frequency;
-					
-					//i->buf.head += (i->buf.head < i->buf.size) ? 1 : -i->buf.head;
 				break;
 				
 				case Derecha:
-					i->buf.head += (i->buf.head < i->buf.size) ? 1 : (-i->buf.head + 1);
-				
-					i->msg_rda_mosi.comando = cmd_set_freq;
-					i->msg_rda_mosi.data = i->buf.info[i->buf.head];
-					osMessageQueuePut(get_id_MsgQueue_rda_mosi(), &i->msg_rda_mosi, NULL, 0U);
 					
-					//SEGURIDAD POR SI RDA SE DESCONECTA
-					i->Tmr_error_rda = osTimerNew(tmr_error_rda_callback, osTimerOnce, (void *)0, NULL);
-					osTimerStart(i->Tmr_error_rda, TO_ERROR);
-					osMessageQueueGet(get_id_MsgQueue_rda_miso(), &i->msg_rda_miso, NULL, osWaitForever);
-					osTimerStop(i->Tmr_error_rda);
-					//SEGURIDAD POR SI RDA SE DESCONECTA
+//					if(i->buf.size  != 0){
+//						if(i->buf.size == 1){
+//							i->msg_rda_mosi.data = i->buf.info[i->buf.head];
+//						}
+//						else if(i->buf.head < (i->buf.size - 1)){
+//							i->buf.head++;
+//							i->msg_rda_mosi.data = i->buf.info[i->buf.head];				
+//						}
+//						else{
+//							i->buf.head = 0;
+//							i->msg_rda_mosi.data = i->buf.info[i->buf.head];
+//						}
+//						i->msg_rda_mosi.comando = cmd_set_freq;
+//						osMessageQueuePut(get_id_MsgQueue_rda_mosi(), &i->msg_rda_mosi, NULL, 0U);
+//					}
+				
+				
+//					if(i->buf.size  != 0){
+//						if(i->buf.head < (i->buf.size - 1)){
+//							i->buf.head++;
+//						}
+//						else{
+//							i->buf.head = 0;
+//						}
+//						i->msg_rda_mosi.comando = cmd_set_freq;
+//						i->msg_rda_mosi.data = i->buf.info[i->buf.head];
+//						osMessageQueuePut(get_id_MsgQueue_rda_mosi(), &i->msg_rda_mosi, NULL, 0U);
+//					}
 
+					if(i->buf.size != 0){
+						i->buf.head += (i->buf.head < (i->buf.size - 1)) ? 1 : -i->buf.head;
+						i->msg_rda_mosi.comando = cmd_set_freq;
+						i->msg_rda_mosi.data = i->buf.info[i->buf.head];
+						osMessageQueuePut(get_id_MsgQueue_rda_mosi(), &i->msg_rda_mosi, NULL, 0U);
+					}
 				break;
 
 				case Izquierda:
-					i->buf.head -= (i->buf.head > 1) ? 1 : (i->buf.head - i->buf.size);
-				
-					i->msg_rda_mosi.comando = cmd_set_freq;
-					i->msg_rda_mosi.data = i->buf.info[i->buf.head];
-					osMessageQueuePut(get_id_MsgQueue_rda_mosi(), &i->msg_rda_mosi, NULL, 0U);
-					
-					//SEGURIDAD POR SI RDA SE DESCONECTA
-					i->Tmr_error_rda = osTimerNew(tmr_error_rda_callback, osTimerOnce, (void *)0, NULL);
-					osTimerStart(i->Tmr_error_rda, TO_ERROR);
-					osMessageQueueGet(get_id_MsgQueue_rda_miso(), &i->msg_rda_miso, NULL, osWaitForever);
-					osTimerStop(i->Tmr_error_rda);
-					//SEGURIDAD POR SI RDA SE DESCONECTA
+					if(i->buf.size != 0){
+						if(i->buf.head == 0){
+							i->buf.head = (i->buf.size - 1);
+						}
+						else{
+							i->buf.head--;
+						}
+						i->msg_rda_mosi.comando = cmd_set_freq;
+						i->msg_rda_mosi.data = i->buf.info[i->buf.head];
+						osMessageQueuePut(get_id_MsgQueue_rda_mosi(), &i->msg_rda_mosi, NULL, 0U);
+					}
 				break;
 				
 				case Centro:

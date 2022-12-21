@@ -120,7 +120,7 @@ static int rda_read(reg_rda_t* reg, data_t* data){
 	static uint32_t flags;
 	static uint8_t test;
 	
-	osDelay(300);
+	osDelay(350);
 	
 	do{
 		I2Cdrv->MasterReceive(RDA_ADDR_RD, data_reg, 12, false);
