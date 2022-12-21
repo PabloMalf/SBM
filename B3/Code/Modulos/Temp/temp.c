@@ -8,7 +8,7 @@
 #define FLAG_CALLBACK_I2C 0x02
 
 extern ARM_DRIVER_I2C Driver_I2C1;
-ARM_DRIVER_I2C *I2Cdrv = &Driver_I2C1;
+static ARM_DRIVER_I2C *I2Cdrv = &Driver_I2C1;
 
 static osThreadId_t id_Th_temp;
 static osThreadId_t id_Th_temp_test;

@@ -18,9 +18,9 @@ static ARM_DRIVER_USART *USARTdrv = &Driver_USART3;
 void Th_com(void *argument);
 static void myUART_Init(void);
 static void myUART_Callback();
-static void myUART_Update_Data(MSGQUEUE_OBJ_COM msg);
-static void myUART_Get_Time_Of_Frame(MSGQUEUE_OBJ_COM msg, uint8_t* hour, uint8_t* minutes, uint8_t* seconds);
-static int myUART_Update_CMD(MSGQUEUE_OBJ_COM msg);
+static void myUART_Get_Time_Of_Frame(MSGQUEUE_OBJ_COM_MOSI msg_mosi, uint8_t* hour, uint8_t* minutes, uint8_t* seconds);
+static int myUART_Update_CMD(MSGQUEUE_OBJ_COM_MOSI msg_mosi);
+static int myUART_Update_CLK(MSGQUEUE_OBJ_COM_MISO msg_miso);
 
 /*TEST*/
 static osThreadId_t id_Th_com_test;
@@ -31,7 +31,7 @@ osMessageQueueId_t get_id_MsgQueue_com(void){
 }
 
 static int Init_MsgQueue_com(void){
-  id_MsgQueue_com = osMessageQueueNew(MSGQUEUE_OBJECTS_COM, sizeof(MSGQUEUE_OBJ_COM), NULL);
+  id_MsgQueue_com = osMessageQueueNew(MSGQUEUE_OBJECTS_COM, sizeof(MSGQUEUE_OBJ_COM_MOSI), NULL);
   if(id_MsgQueue_com == NULL)
     return (-1); 
   return(0);
@@ -45,38 +45,24 @@ int Init_Th_com(void){
 }
 
 static void Th_com(void *argument){
-	static MSGQUEUE_OBJ_COM msg;
+	static MSGQUEUE_OBJ_COM_MOSI msg_mosi;
+	static MSGQUEUE_OBJ_COM_MISO msg_miso;
 	
 	Init_MsgQueue_com();
 	myUART_Init();
 
 	while(1){
-		if(osMessageQueueGet(id_MsgQueue_com, &msg, NULL, osWaitForever) == osOK)
-			myUART_Update_Data(msg);
-		
+		if(osMessageQueueGet(id_MsgQueue_com, &msg_mosi, NULL, 500U) == osOK)
+			myUART_Update_CMD(msg_mosi);
+		else{
+			myUART_Update_CLK(msg_miso);	
+		}
 		osThreadYield();
-	}
-}
-/* gestion del update de datos*/
-static void myUART_Update_Data(MSGQUEUE_OBJ_COM msg){
-	switch (msg.comPC){
-		case CMD_RDA:
-			myUART_Update_CMD(msg);
-			
-			break;
-		case SET_TIME:
-			break;
-		
-		case LCD_to_PC:
-			break;
-		
-		case PC_CNTRL:
-			break;
 	}
 }
 
 /* update de hora y trama de 12 bytes de la radio */
-static int myUART_Update_CMD(MSGQUEUE_OBJ_COM msg){
+static int myUART_Update_CMD(MSGQUEUE_OBJ_COM_MOSI msg_mosi){
 	static char buffer[50] = {0x00};
 	static uint8_t h;
 	static uint8_t m;
@@ -85,10 +71,10 @@ static int myUART_Update_CMD(MSGQUEUE_OBJ_COM msg){
 	uint8_t k, j;
 	j = 0;
 	
-	myUART_Get_Time_Of_Frame(msg, &h, &m, &s);
+	myUART_Get_Time_Of_Frame(msg_mosi, &h, &m, &s);
 	sprintf(buffer, "%.2u:%.2u:%.2u---> ", h, m, s);
 	for(k=13; k<48; k++){
-		sprintf(&buffer[k], "%X", msg.frame_Tx[j]);
+		sprintf(&buffer[k], "%X", msg_mosi.frame_Tx[j]);
 		k+=2;
 		buffer[k]=0x20;
 		j++;
@@ -124,14 +110,14 @@ static void myUART_Callback(uint32_t event){
 //	if((event & ARM_USART_EVENT_SEND_COMPLETE) | (event & ARM_USART_EVENT_RECEIVE_COMPLETE) )error
 }
 
-static void myUART_Get_Time_Of_Frame(MSGQUEUE_OBJ_COM msg, uint8_t* h, uint8_t* m, uint8_t* s){
-	*h = msg.hora / 3600;
-	*m = (msg.hora - (*h * 3600)) / 60;
-	*s = (msg.hora - (*h * 3600) - (*m * 60));
+static void myUART_Get_Time_Of_Frame(MSGQUEUE_OBJ_COM_MOSI msg_mosi, uint8_t* h, uint8_t* m, uint8_t* s){
+	*h = msg_mosi.hora / 3600;
+	*m = (msg_mosi.hora - (*h * 3600)) / 60;
+	*s = (msg_mosi.hora - (*h * 3600) - (*m * 60));
 }
 
 /*OPCIONAL del set hora desde teraterm. hora actualizada*/
-static int myUART_Update_CLK(MSGQUEUE_OBJ_COM msg){
+static int myUART_Update_CLK(MSGQUEUE_OBJ_COM_MISO msg_miso){
 	static char buffer [5]= {0x00};
 	static uint32_t xFlag;
 	
@@ -140,8 +126,8 @@ static int myUART_Update_CLK(MSGQUEUE_OBJ_COM msg){
 	if(xFlag & FLAG_UART_ERROR)
 		return (-1);
 	
-	msg.hora = ((buffer[0]*3600)+(buffer[2]*60)+buffer[4]); // 0x 1508f = 86159 nueva h 23:55:59
-	osMessageQueuePut(id_MsgQueue_com, &msg, 0U, 0U);
+	msg_miso.hora = ((buffer[0]*3600)+(buffer[2]*60)+buffer[4]); // 0x 1508f = 86159 nueva h 23:55:59
+	osMessageQueuePut(id_MsgQueue_com, &msg_miso, 0U, 0U);
 	return (0);
 }
 
@@ -169,7 +155,7 @@ int Init_Th_com_test(void){
 }
 
 void Th_com_test(void*arg){
-	static MSGQUEUE_OBJ_COM msg2;
+	static MSGQUEUE_OBJ_COM_MOSI msg2;
 	static uint8_t cnt = 0; 
 	
 	Init_Th_com();

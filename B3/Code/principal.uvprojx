@@ -434,6 +434,11 @@
               <FilePath>.\Modulos\RDA5807M\rda5807m.c</FilePath>
             </File>
             <File>
+              <FileName>rgb.c</FileName>
+              <FileType>1</FileType>
+              <FilePath>.\Modulos\RGB\rgb.c</FilePath>
+            </File>
+            <File>
               <FileName>temp.c</FileName>
               <FileType>1</FileType>
               <FilePath>.\Modulos\Temp\temp.c</FilePath>
@@ -442,11 +447,6 @@
               <FileName>vol.c</FileName>
               <FileType>1</FileType>
               <FilePath>.\Modulos\VOL\vol.c</FilePath>
-            </File>
-            <File>
-              <FileName>rgb.c</FileName>
-              <FileType>1</FileType>
-              <FilePath>.\Modulos\RGB\rgb.c</FilePath>
             </File>
           </Files>
         </Group>

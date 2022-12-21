@@ -3,14 +3,11 @@
 
 #include "cmsis_os2.h"
 
-#define MSGQUEUE_OBJECTS_RDA 	4
+#define MSGQUEUE_OBJECTS_RDA 4
 
-//Addres
+/*----- Addres -----*/
 #define RDA_ADDR_WR 0x20 >> 1
 #define RDA_ADDR_RD 0x22 >> 1
-
-#define MIN_FREQ     					 870
-#define MAX_FREQ							1080
 //Reg2
 #define RDA_CONF_HZ 				0x8000
 #define RDA_CONF_nMUTE			0x6000
@@ -37,9 +34,16 @@
 //Reg6
 #define RDA_CONF_OPEN_MODE	0x4000
 
+#define RDA_TUNE_ON		0x0010
+#define RDA_TUNE_OFF	0xFFFF
+
+#define START_FREQ 87.00
+#define MAX_FREQ 108000
+#define MIN_FREQ 87500
+
 typedef enum {
-	cmd_power_on,
 	cmd_power_off,
+	cmd_power_on,
 	cmd_seek_up, 
 	cmd_seek_down, 
 	cmd_next100kHz, 
@@ -51,20 +55,19 @@ typedef enum {
 
 typedef struct{
 	comando_t comando;
-	uint16_t data;
+	float freq;
+	uint8_t vol;
 } MSGQUEUE_OBJ_RDA_MOSI;
 
 typedef struct{
-	uint8_t	 volume;
-	uint8_t  freq_rssi;
-	uint16_t frequency;
-	char bytes_send[12];
+	float freq;
+	uint16_t reg[6];
 } MSGQUEUE_OBJ_RDA_MISO;
 
 int Init_Th_rda(void);
 int Init_Th_rda_test(void);
 
-osMessageQueueId_t get_id_MsgQueue_rda_mosi(void);
 osMessageQueueId_t get_id_MsgQueue_rda_miso(void);
+osMessageQueueId_t get_id_MsgQueue_rda_mosi(void);
 
 #endif
