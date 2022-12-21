@@ -3,11 +3,14 @@
 
 #include "cmsis_os2.h"
 
-#define MSGQUEUE_OBJECTS_RDA 4
+#define MSGQUEUE_OBJECTS_RDA 	4
 
 //Addres
 #define RDA_ADDR_WR 0x20 >> 1
 #define RDA_ADDR_RD 0x22 >> 1
+
+#define MIN_FREQ     					 870
+#define MAX_FREQ							1080
 //Reg2
 #define RDA_CONF_HZ 				0x8000
 #define RDA_CONF_nMUTE			0x6000

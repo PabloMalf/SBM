@@ -93,13 +93,18 @@ static void Th_vol(void *argument){
 	Init_MsgQueue_vol();
 	myADC_Init(&hadc);
 	
+	msg.volume_lvl = myADC_Get_Voltage(&hadc);
+	osMessageQueuePut(id_MsgQueue_vol, &msg, 0U, 0U);
+	
 	while(1){
-		voltage = myADC_Get_Voltage(&hadc);
-		if(prev_voltage != voltage){
-			msg.volume_lvl = voltage;
-			osMessageQueuePut(id_MsgQueue_vol, &msg, 0U, 0U);
-			prev_voltage = voltage;
-		}
+//		voltage = myADC_Get_Voltage(&hadc);
+//		if(prev_voltage != voltage){
+//			msg.volume_lvl = voltage;
+//			osMessageQueuePut(id_MsgQueue_vol, &msg, 0U, 0U);
+//			prev_voltage = voltage;
+//		}
+		msg.volume_lvl = myADC_Get_Voltage(&hadc);
+		osMessageQueuePut(id_MsgQueue_vol, &msg, 0U, 0U);
 		osDelay(1000U);
 	}
 }
