@@ -79,6 +79,8 @@ static uint8_t myADC_Get_Voltage(ADC_HandleTypeDef *hadc){
 	}while(status != HAL_OK);
 	
 	raw_voltage = HAL_ADC_GetValue(hadc);
+	if(raw_voltage < 9)
+		raw_voltage = 9;
 	voltage = raw_voltage * VOL_REF / RESOLUTION_12B;
 	
 	HAL_ADC_Stop(hadc);

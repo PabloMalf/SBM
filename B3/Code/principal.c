@@ -47,7 +47,7 @@ int Init_Th_principal(void){
 					Init_Th_com() | 
 					Init_Th_joystick() | 
 					Init_Th_lcd() | 
-					//Init_Th_pwm() | 
+					Init_Th_pwm() | 
 					Init_Th_rda() | 
 					Init_Th_temp() | 
 					Init_Th_vol() |
@@ -137,7 +137,7 @@ static void f_manual(void){
 		osMessageQueuePut(get_id_MsgQueue_com_mosi(), &msg_com_mosi, NULL, 0U);
 		
 		sprintf(msg_lcd.data_L1, "  %.2u:%.2u:%.2u - T:%.1fºC", hora, min, seg, msg_temp.temperature);
-		sprintf(msg_lcd.data_L2, "    F:%.1lf  Vol:%d%d", msg_rda_miso.freq/1000, (msg_vol.volume_lvl / 10), (msg_vol.volume_lvl % 10));
+		sprintf(msg_lcd.data_L2, "    F:%.1lf  Vol:%d%d", msg_rda_miso.freq/1000, ((msg_vol.volume_lvl+1) / 10), ((msg_vol.volume_lvl+1) % 10));
 		osMessageQueuePut(get_id_MsgQueue_lcd(), &msg_lcd, NULL, 0U);
 	}
 	if(osOK == osMessageQueueGet(get_id_MsgQueue_joystick(), &msg_joy, NULL, 0U)){
@@ -195,18 +195,18 @@ static void f_memori(void){
 		sprintf(msg_lcd.data_L1, "  %.2u:%.2u:%.2u - T:%.1fºC", hora, min, seg, msg_temp.temperature);
 		if((msg_rda_miso.freq / 1000) > 99.9){
 			if(buf.size == 0){
-				sprintf(msg_lcd.data_L2, ".M:%d%d/%d%d  F:%.1lf  Vol:%d%d", buf.head / 10, buf.head % 10, buf.size / 10, buf.size % 10, msg_rda_miso.freq / 1000, (msg_vol.volume_lvl / 10), (msg_vol.volume_lvl % 10));
+				sprintf(msg_lcd.data_L2, ".M:%d%d/%d%d  F:%.1lf  Vol:%d%d", buf.head / 10, buf.head % 10, buf.size / 10, buf.size % 10, msg_rda_miso.freq / 1000, ((msg_vol.volume_lvl+1) / 10), ((msg_vol.volume_lvl+1) % 10));
 			}
 			else{
-				sprintf(msg_lcd.data_L2, ".M:%d%d/%d%d  F:%.1lf  Vol:%d%d", (buf.head + 1) / 10, (buf.head + 1) % 10, buf.size / 10, buf.size % 10, msg_rda_miso.freq / 1000, (msg_vol.volume_lvl / 10), (msg_vol.volume_lvl % 10));
+				sprintf(msg_lcd.data_L2, ".M:%d%d/%d%d  F:%.1lf  Vol:%d%d", (buf.head + 1) / 10, (buf.head + 1) % 10, buf.size / 10, buf.size % 10, msg_rda_miso.freq / 1000, ((msg_vol.volume_lvl+1) / 10), ((msg_vol.volume_lvl+1) % 10));
 			}
 		}
 		else{
 			if(buf.size == 0){
-				sprintf(msg_lcd.data_L2, ".M:%d%d/%d%d  F: %.1lf  Vol:%d%d", buf.head / 10, buf.head % 10, buf.size / 10, buf.size % 10, msg_rda_miso.freq / 1000, (msg_vol.volume_lvl / 10), (msg_vol.volume_lvl % 10));
+				sprintf(msg_lcd.data_L2, ".M:%d%d/%d%d  F: %.1lf  Vol:%d%d", buf.head / 10, buf.head % 10, buf.size / 10, buf.size % 10, msg_rda_miso.freq / 1000, ((msg_vol.volume_lvl+1) / 10), ((msg_vol.volume_lvl+1) % 10));
 			}
 			else{
-				sprintf(msg_lcd.data_L2, ".M:%d%d/%d%d  F: %.1lf  Vol:%d%d", (buf.head + 1) / 10, (buf.head + 1) % 10, buf.size / 10, buf.size % 10, msg_rda_miso.freq / 1000, (msg_vol.volume_lvl / 10), (msg_vol.volume_lvl % 10));
+				sprintf(msg_lcd.data_L2, ".M:%d%d/%d%d  F: %.1lf  Vol:%d%d", (buf.head + 1) / 10, (buf.head + 1) % 10, buf.size / 10, buf.size % 10, msg_rda_miso.freq / 1000, ((msg_vol.volume_lvl+1) / 10), ((msg_vol.volume_lvl+1) % 10));
 			}
 		}
 		osMessageQueuePut(get_id_MsgQueue_lcd(), &msg_lcd, NULL, 0U);
@@ -271,7 +271,7 @@ static void f_memori(void){
 							buf.head--;
 						}
 						msg_rda_mosi.comando = cmd_set_freq;
-						msg_rda_mosi.freq = buf.info[buf.head]/1000;
+						msg_rda_mosi.freq = ((buf.info[buf.head] / 1000) + 0.05);
 						osMessageQueuePut(get_id_MsgQueue_rda_mosi(), &msg_rda_mosi, NULL, 0U);
 					}
 				break;

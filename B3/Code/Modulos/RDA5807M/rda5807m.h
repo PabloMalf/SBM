@@ -61,6 +61,7 @@ typedef struct{
 
 typedef struct{
 	float freq;
+	uint8_t rssi;
 	uint16_t reg[6];
 } MSGQUEUE_OBJ_RDA_MISO;
 

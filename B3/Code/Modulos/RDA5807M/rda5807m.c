@@ -125,6 +125,7 @@ static void get_info(){
 	rda_read();
 	msg_miso.freq = (((rd_regA & 0x03FF) * 100) + 87000);
 	frequency = msg_miso.freq / 1000;
+	msg_miso.rssi = (rd_regB >> 10);
 	osMessageQueueReset(id_MsgQueue_rda_miso);
   osMessageQueuePut(id_MsgQueue_rda_miso, &msg_miso, NULL, 0U);
 }
