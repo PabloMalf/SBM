@@ -1,0 +1,6 @@
+CMSIS-RTOS - THREADS
+
+osStatus status;
+uint32_t delayTime;
+delayTime = 1000U; //1 segundo
+status = osDelay(delayTime);

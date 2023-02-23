@@ -1,0 +1,44 @@
+#include "cmsis_os2.h"
+ 
+void Timer1_Callback (void *arg);               // prototypes for timer callback function
+void Timer2_Callback (void *arg);               // prototypes for timer callback function
+ 
+uint32_t exec1;                                 // argument for the timer call back function
+uint32_t exec2;                                 // argument for the timer call back function
+ 
+void TimerCreate_example (void)  {
+  osTimerId_t id1;                              // timer id
+  osTimerId_t id2;                              // timer id
+ 
+  // Create one-shoot timer
+  exec1 = 1U;
+  id1 = osTimerNew(Timer1_Callback, osTimerOnce, &exec1, NULL);
+  if (id1 != NULL) {
+    // One-shoot timer created
+  }
+ 
+  // Create periodic timer
+  exec2 = 2U;
+  id2 = osTimerNew(Timer2_Callback, osTimerPeriodic, &exec2, NULL);
+  if (id2 != NULL) {
+    // Periodic timer created
+  }
+}
+
+
+
+// creates a one-shot timer:
+one_shot_id = osTimerNew(one_shot_Callback, osTimerOnce, (void *)0, NULL);     // (void*)0 is passed as an argument
+                                                                               // to the callback function
+// creates a periodic timer:
+periodic_id = osTimerNew(periodic_Callback, osTimerPeriodic, (void *)5, NULL); // (void*)5 is passed as an argument
+                                                                               // to the callback function
+osTimerStart(one_shot_id, 500U);
+osTimerStart(periodic_id, 1500U);
+ 
+// start the one-shot timer again after it has triggered the first time:
+osTimerStart(one_shot_id, 500U);
+ 
+// when timers are not needed any longer free the resources:
+osTimerDelete(one_shot_id);
+osTimerDelete(periodic_id);

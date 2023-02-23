@@ -1,0 +1,18 @@
+Practica 2 
+timer2 genarcion señal cuadrada
+1.-Ver el bus al que esta conectado -> APB1
+	Calcular/conf frecuencia de funcionamiento del timer
+	Prescalers: AHB, APB1
+2.-Configurar cAnal de salida del TIM2
+	PB11 conectadoTIM2-CH4 
+	Usar el alternate con PB11 a AF1
+3.-Configurar el timer 2
+	Habilitar Reloj
+	Config parametros generales
+		Prescaler
+		Period
+	Config modo O.C. (modo, polaridad)
+	Arrancar el timer en modo OC
+
+
+Leer hasta referencias

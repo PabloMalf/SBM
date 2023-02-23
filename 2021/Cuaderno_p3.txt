@@ -1,0 +1,9 @@
+Retardo con Timer7
+1.- Programar el timer (prescaler, periodo -> 37us = 228)
+2.- Arrancar el timer
+3.- Esperar a que pase ese tiempo 
+	Leer Flag
+	Leer variable
+	(interrupcion)
+4.- Parar el timer
+5.- Borrar el flag

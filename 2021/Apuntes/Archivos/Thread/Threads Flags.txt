@@ -1,0 +1,3 @@
+osThreadFlagsSet (tid_Thread_LED_2, 0x01U)
+osThreadFlagsClear (flags)	
+osThreadFlagsWait (0x001U, [osFlagsWaitAll | osFlagsWaitAny | osFlagsNoClear], [osWaitForever | NUMERO_TICKS]);
